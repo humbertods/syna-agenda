@@ -16,6 +16,7 @@
   window.SYNA_API = "https://script.google.com/macros/s/AKfycbxShQ8OsbaXajcaqI-D3_QWWszIkTvoi6b-R3UXqvjmirDCkfvY6rtm60ivXfDsnc8q/exec";
 </script>
 
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
@@ -162,6 +163,32 @@
   .h-pend{background:#EEEAFB}
   .h-prox{background:#FFFFFF}
 
+  /* calendario mensual */
+  .cal{padding:12px 12px 14px;margin-top:4px}
+  .cal-head{display:flex;align-items:center;justify-content:center;gap:14px;padding:4px 0 12px}
+  .cal-nav{background:none;border:none;color:var(--brand);font-size:28px;line-height:1;cursor:pointer;width:40px;height:40px;border-radius:50%}
+  .cal-nav:active{background:var(--brand-soft)}
+  .cal-mes{font-size:23px;font-weight:700;letter-spacing:-.01em;text-align:center;min-width:130px}
+  .cal-dows{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--line);padding-top:10px;margin-bottom:2px}
+  .cal-dow{text-align:center;font-size:12px;font-weight:600;color:var(--soft)}
+  .cal-dow.sab{color:#E8924B}
+  .cal-dow.dom{color:#9173E6}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-cell{aspect-ratio:1/1.04;background:none;border:none;border-radius:13px;cursor:pointer;padding:0;font-family:inherit;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:background .12s ease}
+  .cal-cell.empty{visibility:hidden;cursor:default}
+  .cal-cell .cd{font-size:16px;font-weight:600;color:var(--ink);line-height:1}
+  .cal-cell .cdot{width:5px;height:5px;border-radius:50%;background:var(--brand)}
+  .cal-cell .cdot.ghost{background:transparent}
+  .cal-cell.sab .cd{color:#E8924B}
+  .cal-cell.dom{background:#F1EFF5}
+  .cal-cell.dom .cd{color:#B8B3C6}
+  .cal-cell.hoy{box-shadow:inset 0 0 0 1.6px var(--brand)}
+  .cal-cell.sel{background:var(--brand)}
+  .cal-cell.sel .cd{color:#fff}
+  .cal-cell.sel .cdot{background:#fff}
+  .cal-cell:not(.sel):active{background:var(--brand-soft)}
+
   /* menú flotante (dock) */
   nav.dock{background:transparent;border:none;backdrop-filter:none;-webkit-backdrop-filter:none;
     padding:0 0 calc(14px + env(safe-area-inset-bottom));pointer-events:none}
@@ -281,6 +308,9 @@ const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','di
 function fechaBonita(f){ const m=f.match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f;
   const d=new Date(+m[1],+m[2]-1,+m[3]); return `${DIAS[d.getDay()]} ${+m[3]} ${MES[+m[2]-1]}`; }
 function fechaCorta(f){ const m=String(f).match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f; return `${+m[3]} ${MES[+m[2]-1]}`; }
+const MESES_L=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function fechaLarga(f){ const m=String(f).match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f;
+  const d=new Date(+m[1],+m[2]-1,+m[3]); return `${DIAS[d.getDay()]}, ${+m[3]} de ${MESES_L[+m[2]-1].toLowerCase()}`; }
 const ESTADOS={confirmada:['#EAF3DE','#3B6D11'],pendiente:['#FAEEDA','#854F0B'],
   completada:['#E6F1FB','#0C447C'],cancelada:['#F1EFE8','#5F5E5A'],no_show:['#FCEBEB','#A32D2D']};
 
@@ -322,7 +352,7 @@ function App(){
   };
   const onRefresh = () => { setRefreshing(true); setRefreshKey(k=>k+1); setTimeout(()=>setRefreshing(false),700); };
 
-  if(!authed) return <Login onLogin={onLogin}/>;
+  if(!authed) return <div id="app"><Login onLogin={onLogin}/></div>;
 
   return (
     <div id="app">
@@ -553,39 +583,88 @@ function ReagendarModal({reserva,servicios,colorArea,onClose,onDone}){
   );
 }
 
-/* ---------- Agenda del día ---------- */
+/* ---------- Agenda / Calendario del mes ---------- */
 function Agenda({servicios,colorArea}){
-  const [fecha,setFecha]=useState(hoy());
-  const [resv,setResv]=useState(null);
+  const ahora=new Date();
+  const [cursor,setCursor]=useState({y:ahora.getFullYear(), m:ahora.getMonth()});
+  const [mesData,setMesData]=useState(null);
+  const [sel,setSel]=useState(hoy());
   const [reagendar,setReagendar]=useState(null);
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
-  const cargar=async(f)=>{
-    setResv(null);
-    try{ const r=await apiGet('getReservas',{fecha:f}); setResv(r.ok?r.reservas:[]); }
-    catch(e){ setResv([]); }
+  const pad2=n=>String(n).padStart(2,'0');
+  const mesStr=`${cursor.y}-${pad2(cursor.m+1)}`;
+
+  const cargarMes=async()=>{
+    setMesData(null);
+    try{ const r=await apiGet('getReservasMes',{mes:mesStr}); setMesData(r.ok?r.reservas:[]); }
+    catch(e){ setMesData([]); }
   };
-  useEffect(()=>{cargar(fecha)},[]);
+  useEffect(()=>{cargarMes()},[cursor.y,cursor.m]);
 
   const cancelar=async(id)=>{
-    if(!confirm('¿Cancelar esta reserva?')) return;
-    await apiPost('cancelarReserva',{id});
-    cargar(fecha);
+    if(!confirm('¿Eliminar esta cita?')) return;
+    await apiPost('cancelarReserva',{id}); cargarMes();
   };
 
-  const ordenadas=(resv||[]).slice().sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio));
+  const conCitas=useMemo(()=>{ const set={};
+    (mesData||[]).forEach(r=>{ if(r.estado!=='cancelada'){ const d=+r.fecha.slice(8,10); set[d]=(set[d]||0)+1; } });
+    return set; },[mesData]);
+
+  // construir grilla (lunes primero)
+  const primeroDow=new Date(cursor.y,cursor.m,1).getDay();      // 0 dom..6 sab
+  const offset=(primeroDow===0?6:primeroDow-1);
+  const diasMes=new Date(cursor.y,cursor.m+1,0).getDate();
+  const celdas=[]; for(let i=0;i<offset;i++) celdas.push(null);
+  for(let d=1;d<=diasMes;d++) celdas.push(d);
+
+  const hoyStr=hoy();
+  const fechaDe=d=>`${cursor.y}-${pad2(cursor.m+1)}-${pad2(d)}`;
+  const cambiarMes=delta=>{ let m=cursor.m+delta,y=cursor.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} setCursor({y,m}); };
+
+  const selEnMes=sel.slice(0,7)===mesStr;
+  const selDow=new Date(sel+'T12:00:00').getDay();
+  const esDomingo=selDow===0;
+  const delDia=(mesData||[]).filter(r=>r.fecha===sel).sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio));
 
   return (
     <div className="fade">
       <div className="sec-title">Agenda</div>
-      <input type="date" className="date-input" value={fecha}
-        onChange={e=>{setFecha(e.target.value);cargar(e.target.value);}} />
-      {resv===null ? <div className="spinner"></div> :
-       ordenadas.length===0 ? <div className="empty">Sin reservas para {fechaBonita(fecha)}</div> :
-       ordenadas.map(r=>{
+
+      <div className="cal card">
+        <div className="cal-head">
+          <button className="cal-nav" onClick={()=>cambiarMes(-1)} aria-label="Mes anterior">‹</button>
+          <div className="cal-mes">{MESES_L[cursor.m]}{cursor.y!==ahora.getFullYear()?(' '+cursor.y):''}</div>
+          <button className="cal-nav" onClick={()=>cambiarMes(1)} aria-label="Mes siguiente">›</button>
+        </div>
+        <div className="cal-dows">
+          {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=>
+            <span key={i} className={"cal-dow"+(i===5?' sab':'')+(i===6?' dom':'')}>{d}</span>)}
+        </div>
+        <div className="cal-grid">
+          {celdas.map((d,i)=>{
+            if(d===null) return <span key={i} className="cal-cell empty"></span>;
+            const col=i%7, f=fechaDe(d);
+            const cls="cal-cell"+(f===sel?' sel':'')+(f===hoyStr?' hoy':'')+(col===6?' dom':'')+(col===5?' sab':'');
+            return (
+              <button key={i} className={cls} onClick={()=>setSel(f)}>
+                <span className="cd">{d}</span>
+                <span className={"cdot"+(conCitas[d]?'':' ghost')}></span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="sub" style={{textTransform:'capitalize'}}>{fechaLarga(sel)}</div>
+      {!selEnMes ? <div className="empty" style={{padding:'20px 0'}}>Toca un día para ver sus citas</div> :
+       mesData===null ? <div className="spinner"></div> :
+       esDomingo ? <div className="empty" style={{padding:'24px 0'}}>Domingo — no laboramos 🌙</div> :
+       delDia.length===0 ? <div className="empty" style={{padding:'24px 0'}}>Sin citas este día</div> :
+       delDia.map(r=>{
          const s=svcMap[r.servicio_id]; const c=colorArea(r.area);
          const est=ESTADOS[r.estado]||['#F1EFE8','#5F5E5A'];
-         const tarjeta = (
+         const tarjeta=(
            <div className="resv" style={{borderLeftColor:c}}>
              <div className="time">{r.hora_inicio}<small>{r.hora_fin}</small></div>
              <div style={{flex:1,minWidth:0}}>
@@ -602,8 +681,9 @@ function Agenda({servicios,colorArea}){
            </SwipeRow>
          );
        })}
+
       {reagendar && <ReagendarModal reserva={reagendar} servicios={servicios} colorArea={colorArea}
-        onClose={()=>setReagendar(null)} onDone={()=>{setReagendar(null);cargar(fecha);}} />}
+        onClose={()=>setReagendar(null)} onDone={()=>{setReagendar(null);cargarMes();}} />}
     </div>
   );
 }
