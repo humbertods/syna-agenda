@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#F4F2EE" />
+<meta name="theme-color" content="#F4F5F7" />
 <title>SYNA · Agenda</title>
 <link rel="icon" type="image/png" href="icon_SYNA.png" />
 <link rel="apple-touch-icon" href="icon_SYNA.png" />
@@ -21,7 +21,7 @@
 
 <style>
   :root{
-    --bg:#F4F2EE; --surface:#FFFFFF; --ink:#1C1C1E; --soft:#8E8E93;
+    --bg:#E6E6EA; --panel:#F4F5F7; --surface:#FFFFFF; --ink:#1C1C1E; --soft:#8E8E93;
     --line:#E6E4DF; --line2:#D8D6D0;
     --cejas:#7CB342; --pestanas:#E8924B; --facial:#4A90D9;
     --brand:#5B3BC4; --brand-deep:#3A2280; --brand-soft:#EEE9FB;
@@ -32,7 +32,8 @@
   html,body{margin:0;background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
   body{min-height:100dvh}
-  #app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  #app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--panel)}
+  @media(min-width:520px){ #app{box-shadow:0 0 0 1px rgba(0,0,0,.03),0 16px 50px rgba(40,30,80,.18)} }
   .display{font-weight:700;letter-spacing:-.02em}
 
   header{padding:14px 18px 4px;display:flex;align-items:center;justify-content:flex-start}
@@ -110,7 +111,7 @@
   .logout svg{width:22px;height:22px}
 
   /* pantalla de login (paleta imagen 4) */
-  .login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;
+  .login{min-height:100dvh;background:var(--panel);display:flex;flex-direction:column;justify-content:center;
     padding:36px 28px calc(26px + env(safe-area-inset-bottom));position:relative;overflow:hidden}
   .login .glow{position:absolute;left:50%;bottom:-200px;transform:translateX(-50%);
     width:560px;height:470px;z-index:0;pointer-events:none;opacity:.5;filter:blur(8px);
@@ -166,6 +167,27 @@
   .dk-refresh svg{width:24px;height:24px}
   .dk-refresh.spin svg{animation:spin .7s linear infinite}
 
+  /* swipe lateral (reagendar / eliminar) */
+  .swipe{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .swipe .resv{margin-top:0;box-shadow:none;border-radius:0}
+  .swipe-actions{position:absolute;top:0;right:0;bottom:0;display:flex}
+  .sw{border:none;color:#fff;font-family:inherit;font-size:11.5px;font-weight:600;width:82px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+  .sw svg{width:20px;height:20px}
+  .sw-reag{background:var(--brand)}
+  .sw-elim{background:#E5484D}
+  .swipe-front{position:relative;background:var(--surface);will-change:transform;touch-action:pan-y;user-select:none}
+
+  /* modal hoja inferior */
+  .modal-bg{position:fixed;inset:0;z-index:20;background:rgba(20,16,40,.42);
+    display:flex;align-items:flex-end;justify-content:center;animation:fade .2s ease}
+  .modal{background:var(--panel);width:100%;max-width:480px;border-radius:22px 22px 0 0;
+    padding:18px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 34px rgba(0,0,0,.2);
+    animation:up .26s cubic-bezier(.2,.8,.2,1);max-height:86dvh;overflow-y:auto}
+  @keyframes up{from{transform:translateY(50px);opacity:.5}to{transform:none;opacity:1}}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .modal-x{background:none;border:none;font-size:26px;line-height:1;color:var(--soft);cursor:pointer;padding:0 4px}
+
   /* chat estilo Mensajes */
   .chat-msgs{display:flex;flex-direction:column;gap:7px;padding:6px 0 84px}
   .bubble{max-width:80%;padding:9px 14px;border-radius:19px;font-size:16px;line-height:1.35;white-space:pre-wrap}
@@ -173,7 +195,7 @@
   .bubble.me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:6px}
   .typing{align-self:flex-start;color:var(--soft);font-size:14px;padding:2px 8px}
   .chatbar{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 16px;z-index:6}
-  .chatbar-in{max-width:480px;width:100%;display:flex;gap:8px;background:var(--bg);padding:8px 0}
+  .chatbar-in{max-width:480px;width:100%;display:flex;gap:8px;background:var(--panel);padding:8px 0}
   .chatbar input{flex:1;padding:11px 16px;border:1px solid var(--line2);border-radius:22px;background:var(--surface);font-family:inherit;font-size:16px;color:var(--ink);outline:none}
   .chatbar input:focus{border-color:var(--brand)}
   .chatbar .send{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:50%;background:var(--brand);color:#fff;font-size:20px;cursor:pointer}
@@ -431,10 +453,78 @@ function Reservar({areas,servicios,colorArea}){
   );
 }
 
+/* ---------- Swipe lateral (reagendar / eliminar) ---------- */
+function SwipeRow({children,onReagendar,onEliminar}){
+  const W=164;
+  const [dx,setDx]=useState(0);
+  const drag=React.useRef(false);
+  const start=React.useRef(0);
+  const moved=React.useRef(false);
+  const down=e=>{ drag.current=true; moved.current=false; start.current=e.clientX-dx; try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){ } };
+  const move=e=>{ if(!drag.current) return; let nx=e.clientX-start.current; if(Math.abs(nx-dx)>3) moved.current=true; nx=Math.max(-W,Math.min(0,nx)); setDx(nx); };
+  const up=()=>{ if(!drag.current) return; drag.current=false; setDx(dx < -W/2 ? -W : 0); };
+  const click=()=>{ if(!moved.current && dx<0) setDx(0); };
+  return (
+    <div className="swipe">
+      <div className="swipe-actions">
+        <button className="sw sw-reag" onClick={()=>{setDx(0);onReagendar();}}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Reagendar</button>
+        <button className="sw sw-elim" onClick={()=>{setDx(0);onEliminar();}}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+          Eliminar</button>
+      </div>
+      <div className="swipe-front" style={{transform:`translateX(${dx}px)`,transition:drag.current?'none':'transform .22s cubic-bezier(.2,.8,.2,1)'}}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={click}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Modal Reagendar ---------- */
+function ReagendarModal({reserva,servicios,colorArea,onClose,onDone}){
+  const svc=servicios.find(x=>x.id===reserva.servicio_id);
+  const [fecha,setFecha]=useState(reserva.fecha||hoy());
+  const [slots,setSlots]=useState(null);
+  const [hora,setHora]=useState(null);
+  const [guardando,setGuardando]=useState(false);
+  const [msg,setMsg]=useState('');
+  const cargar=async(f)=>{ setSlots(null); setHora(null);
+    try{ const r=await apiGet('getDisponibilidad',{servicio_id:reserva.servicio_id,fecha:f}); setSlots(r.ok?(r.slots||[]):[]); }
+    catch(e){ setSlots([]); } };
+  useEffect(()=>{cargar(fecha)},[]);
+  const guardar=async()=>{
+    if(!hora){ setMsg('Elige una hora'); return; }
+    setGuardando(true); setMsg('');
+    try{ const r=await apiPost('reagendarReserva',{id:reserva.id,nueva_fecha:fecha,nueva_hora:hora});
+      if(r&&r.ok) onDone(); else setMsg((r&&r.error)||'No se pudo reagendar'); }
+    catch(e){ setMsg('Error de conexión'); }
+    setGuardando(false);
+  };
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-h">Reagendar<button className="modal-x" onClick={onClose}>×</button></div>
+        <div className="muted" style={{fontSize:13,margin:'2px 0 14px'}}>{reserva.cliente_nombre||'—'} · {svc?svc.servicio:reserva.servicio_id}</div>
+        <input type="date" className="date-input" value={fecha} onChange={e=>{setFecha(e.target.value);cargar(e.target.value);}} />
+        {slots===null ? <div className="spinner"></div> :
+         slots.length===0 ? <div className="empty" style={{padding:'22px 0'}}>Sin horarios disponibles ese día</div> :
+         <div className="slots">{slots.map(h=>(
+           <button key={h} className={"slot"+(hora===h?' on':'')} style={hora===h?{background:colorArea(reserva.area)}:null} onClick={()=>setHora(h)}>{h}</button>
+         ))}</div>}
+        {msg && <div style={{color:'#E5484D',fontSize:13,textAlign:'center',marginTop:10}}>{msg}</div>}
+        <button className="btn" disabled={guardando||!hora} onClick={guardar}>{guardando?'Guardando…':'Confirmar nueva hora'}</button>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Agenda del día ---------- */
 function Agenda({servicios,colorArea}){
   const [fecha,setFecha]=useState(hoy());
   const [resv,setResv]=useState(null);
+  const [reagendar,setReagendar]=useState(null);
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
   const cargar=async(f)=>{
@@ -462,18 +552,25 @@ function Agenda({servicios,colorArea}){
        ordenadas.map(r=>{
          const s=svcMap[r.servicio_id]; const c=colorArea(r.area);
          const est=ESTADOS[r.estado]||['#F1EFE8','#5F5E5A'];
-         return (
-           <div key={r.id} className="resv" style={{borderLeftColor:c}}>
+         const tarjeta = (
+           <div className="resv" style={{borderLeftColor:c}}>
              <div className="time">{r.hora_inicio}<small>{r.hora_fin}</small></div>
              <div style={{flex:1,minWidth:0}}>
                <div className="who">{r.cliente_nombre||'—'}</div>
                <div className="what">{s?s.servicio:r.servicio_id} · {r.area} · {r.staff_asignado}</div>
                <span className="badge" style={{background:est[0],color:est[1],marginTop:6,display:'inline-block'}}>{r.estado}</span>
              </div>
-             {r.estado!=='cancelada' && <button className="x" onClick={()=>cancelar(r.id)}>×</button>}
            </div>
          );
+         if(r.estado==='cancelada') return <div key={r.id} style={{opacity:.55,marginTop:10}}>{tarjeta}</div>;
+         return (
+           <SwipeRow key={r.id} onReagendar={()=>setReagendar(r)} onEliminar={()=>cancelar(r.id)}>
+             {tarjeta}
+           </SwipeRow>
+         );
        })}
+      {reagendar && <ReagendarModal reserva={reagendar} servicios={servicios} colorArea={colorArea}
+        onClose={()=>setReagendar(null)} onDone={()=>{setReagendar(null);cargar(fecha);}} />}
     </div>
   );
 }
