@@ -109,6 +109,19 @@
   .x{margin-left:auto;background:none;border:none;color:var(--line2);font-size:20px;cursor:pointer;align-self:flex-start;line-height:1}
 
   .empty{text-align:center;color:var(--soft);padding:48px 20px;font-size:15px}
+
+  /* chat asistente */
+  .chat-msgs{display:flex;flex-direction:column;gap:10px;padding-bottom:84px}
+  .bubble{max-width:82%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.4;white-space:pre-wrap}
+  .bubble.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .bubble.me{align-self:flex-end;background:linear-gradient(135deg,#3A2280,#6B4AD0);color:#fff;border-bottom-right-radius:5px}
+  .typing{align-self:flex-start;color:var(--soft);font-size:14px;padding:4px 6px}
+  .chatbar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 16px;z-index:6}
+  .chatbar-in{max-width:480px;width:100%;display:flex;gap:8px;background:var(--bg);padding:8px 0}
+  .chatbar input{flex:1;padding:13px 16px;border:1px solid var(--line2);border-radius:22px;background:var(--surface);font-family:inherit;font-size:15px;color:var(--ink);outline:none}
+  .chatbar input:focus{border-color:var(--brand)}
+  .chatbar .send{flex:0 0 auto;width:46px;height:46px;border:none;border-radius:50%;background:linear-gradient(135deg,#3A2280,#6B4AD0);color:#fff;font-size:20px;cursor:pointer}
+  .chatbar .send:disabled{opacity:.4}
   .ok-circle{width:72px;height:72px;border-radius:50%;background:var(--cejas);display:flex;align-items:center;justify-content:center;margin:24px auto 8px}
 
   /* tab bar */
@@ -186,15 +199,19 @@ function App(){
       <main>
         {cargando ? <div className="spinner"></div> :
          err ? <div className="empty">{err}<br/><br/>Revisa que la URL de la API esté bien.</div> :
-         tab==='reservar'
-           ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/>
-           : <Agenda servicios={servicios} colorArea={colorArea}/>}
+         tab==='reservar' ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/> :
+         tab==='asistente' ? <Asistente/> :
+         <Agenda servicios={servicios} colorArea={colorArea}/>}
       </main>
       <nav>
         <div className="tabwrap">
           <button className={"tab"+(tab==='reservar'?' on':'')} onClick={()=>setTab('reservar')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4M12 13v4M10 15h4"/></svg>
             Reservar
+          </button>
+          <button className={"tab"+(tab==='asistente'?' on':'')} onClick={()=>setTab('asistente')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3a8.38 8.38 0 0 1 8.5 8.5z"/></svg>
+            Asistente
           </button>
           <button className={"tab"+(tab==='agenda'?' on':'')} onClick={()=>setTab('agenda')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4M7.5 13h.01M7.5 17h.01M12 13h5M12 17h5"/></svg>
@@ -385,6 +402,45 @@ function Agenda({servicios,colorArea}){
            </div>
          );
        })}
+    </div>
+  );
+}
+
+/* ---------- Asistente (chat IA) ---------- */
+function Asistente(){
+  const [msgs,setMsgs]=useState([{role:'assistant',text:'Hola 👋 Soy el asistente de SYNA. Dime qué necesitas — por ejemplo: "agenda depilación de cejas mañana a las 3pm para Ana".'}]);
+  const [input,setInput]=useState('');
+  const [cargando,setCargando]=useState(false);
+  const finRef = React.useRef(null);
+
+  useEffect(()=>{ if(finRef.current) finRef.current.scrollIntoView({behavior:'smooth'}); },[msgs,cargando]);
+
+  const enviar=async()=>{
+    const t=input.trim(); if(!t||cargando) return;
+    const nuevos=[...msgs,{role:'user',text:t}];
+    setMsgs(nuevos); setInput(''); setCargando(true);
+    try{
+      const r=await apiPost('chat',{history:nuevos});
+      setMsgs(m=>[...m,{role:'assistant',text:r.reply||'(sin respuesta)'}]);
+    }catch(e){ setMsgs(m=>[...m,{role:'assistant',text:'Ups, error de conexión. Intenta de nuevo.'}]); }
+    setCargando(false);
+  };
+
+  return (
+    <div className="fade">
+      <div className="chat-msgs">
+        {msgs.map((m,i)=>(
+          <div key={i} className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}</div>
+        ))}
+        {cargando && <div className="typing">escribiendo…</div>}
+        <div ref={finRef}></div>
+      </div>
+      <div className="chatbar"><div className="chatbar-in">
+        <input value={input} placeholder="Escribe un mensaje…"
+          onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter') enviar(); }} />
+        <button className="send" disabled={cargando||!input.trim()} onClick={enviar}>↑</button>
+      </div></div>
     </div>
   );
 }
