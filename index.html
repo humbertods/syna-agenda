@@ -201,17 +201,38 @@
   .modal-x{background:none;border:none;font-size:26px;line-height:1;color:var(--soft);cursor:pointer;padding:0 4px}
 
   /* chat estilo Mensajes */
-  .chat-msgs{display:flex;flex-direction:column;gap:7px;padding:6px 0 84px}
-  .bubble{max-width:80%;padding:9px 14px;border-radius:19px;font-size:16px;line-height:1.35;white-space:pre-wrap}
-  .bubble.bot{align-self:flex-start;background:#E9E9EB;color:#1C1C1E;border-bottom-left-radius:6px}
+  .chat-wrap{display:flex;flex-direction:column}
+  .asis-head{display:flex;align-items:center;gap:11px;padding:2px 2px 14px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+  .asis-av{width:42px;height:42px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#6B46D6,#9173E6);color:#fff;box-shadow:0 4px 12px rgba(91,59,196,.35)}
+  .asis-av svg{width:23px;height:23px}
+  .asis-name{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .asis-on{font-size:12px;color:#34C759;display:flex;align-items:center;gap:5px;margin-top:1px}
+  .asis-on::before{content:"";width:7px;height:7px;border-radius:50%;background:#34C759}
+  .chat-msgs{display:flex;flex-direction:column;gap:8px;padding:4px 0 90px}
+  .bubble{max-width:82%;padding:10px 14px;border-radius:20px;font-size:16px;line-height:1.38;white-space:pre-wrap}
+  .bubble.bot{align-self:flex-start;background:#ECEBF0;color:#1C1C1E;border-bottom-left-radius:6px}
   .bubble.me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:6px}
-  .typing{align-self:flex-start;color:var(--soft);font-size:14px;padding:2px 8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;padding-left:2px}
+  .chip{background:var(--brand-soft);border:none;color:var(--brand-deep);border-radius:18px;padding:9px 14px;
+    font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:transform .12s ease}
+  .chip:active{transform:scale(.96)}
+  .typing{align-self:flex-start;display:flex;gap:4px;background:#ECEBF0;border-radius:20px;border-bottom-left-radius:6px;padding:13px 14px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:#9A99A0;animation:blink 1.2s infinite ease-in-out}
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
   .chatbar{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 16px;z-index:6}
-  .chatbar-in{max-width:480px;width:100%;display:flex;gap:8px;background:var(--panel);padding:8px 0}
-  .chatbar input{flex:1;padding:11px 16px;border:1px solid var(--line2);border-radius:22px;background:var(--surface);font-family:inherit;font-size:16px;color:var(--ink);outline:none}
+  .chatbar::before{content:"";position:absolute;left:0;right:0;top:-26px;height:26px;pointer-events:none;
+    background:linear-gradient(to top,var(--panel),rgba(244,245,247,0))}
+  .chatbar-in{max-width:480px;width:100%;display:flex;align-items:center;gap:9px;background:var(--panel);padding:9px 0 10px}
+  .chatbar input{flex:1;padding:13px 18px;border:1px solid var(--line2);border-radius:24px;background:var(--surface);font-family:inherit;font-size:16px;color:var(--ink);outline:none;transition:border-color .15s ease}
   .chatbar input:focus{border-color:var(--brand)}
-  .chatbar .send{flex:0 0 auto;width:44px;height:44px;border:none;border-radius:50%;background:var(--brand);color:#fff;font-size:20px;cursor:pointer}
-  .chatbar .send:disabled{opacity:.4}
+  .chatbar .send{flex:0 0 auto;width:46px;height:46px;border:none;border-radius:50%;background:var(--brand);color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(91,59,196,.4);transition:transform .15s ease,opacity .15s ease}
+  .chatbar .send svg{width:21px;height:21px}
+  .chatbar .send:active{transform:scale(.92)}
+  .chatbar .send:disabled{opacity:.45;box-shadow:none}
   .ok-circle{width:72px;height:72px;border-radius:50%;background:var(--cejas);display:flex;align-items:center;justify-content:center;margin:24px auto 10px}
 
   /* tab bar translucida */
@@ -588,6 +609,12 @@ function Agenda({servicios,colorArea}){
 }
 
 /* ---------- Asistente (chat IA) ---------- */
+const SUGERENCIAS = [
+  '¿Qué citas hay hoy?',
+  'Agenda cejas mañana 3pm para Ana',
+  '¿Hay espacio el sábado en la tarde?',
+  'Reagenda mi última cita'
+];
 function Asistente(){
   const [msgs,setMsgs]=useState([{role:'assistant',text:'Hola 👋 Soy el asistente de SYNA. Dime qué necesitas — por ejemplo: "agenda depilación de cejas mañana a las 3pm para Ana".'}]);
   const [input,setInput]=useState('');
@@ -596,8 +623,9 @@ function Asistente(){
 
   useEffect(()=>{ if(finRef.current) finRef.current.scrollIntoView({behavior:'smooth'}); },[msgs,cargando]);
 
-  const enviar=async()=>{
-    const t=input.trim(); if(!t||cargando) return;
+  const enviar=async(txt)=>{
+    const t=(typeof txt==='string'?txt:input).trim();
+    if(!t||cargando) return;
     const nuevos=[...msgs,{role:'user',text:t}];
     setMsgs(nuevos); setInput(''); setCargando(true);
     try{
@@ -608,19 +636,38 @@ function Asistente(){
   };
 
   return (
-    <div className="fade">
+    <div className="fade chat-wrap">
+      <div className="asis-head">
+        <div className="asis-av">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6zM18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/></svg>
+        </div>
+        <div className="asis-meta">
+          <div className="asis-name">Asistente SYNA</div>
+          <div className="asis-on">En línea</div>
+        </div>
+      </div>
+
       <div className="chat-msgs">
         {msgs.map((m,i)=>(
           <div key={i} className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}</div>
         ))}
-        {cargando && <div className="typing">escribiendo…</div>}
+        {msgs.length===1 && !cargando &&
+          <div className="chips">
+            {SUGERENCIAS.map((s,i)=>(
+              <button key={i} className="chip" onClick={()=>enviar(s)}>{s}</button>
+            ))}
+          </div>}
+        {cargando && <div className="typing"><span></span><span></span><span></span></div>}
         <div ref={finRef}></div>
       </div>
+
       <div className="chatbar"><div className="chatbar-in">
         <input value={input} placeholder="Escribe un mensaje…"
           onChange={e=>setInput(e.target.value)}
           onKeyDown={e=>{ if(e.key==='Enter') enviar(); }} />
-        <button className="send" disabled={cargando||!input.trim()} onClick={enviar}>↑</button>
+        <button className="send" disabled={cargando||!input.trim()} onClick={enviar} aria-label="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+        </button>
       </div></div>
     </div>
   );
