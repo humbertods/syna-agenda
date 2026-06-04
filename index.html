@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#FAF7F2" />
+<meta name="theme-color" content="#2E1A6B" />
 <title>SYNA · Agenda</title>
+<link rel="icon" type="image/png" href="icon_SYNA.png" />
+<link rel="apple-touch-icon" href="icon_SYNA.png" />
 
 <!-- ============================================================= -->
 <!--  CONFIG: si cambias el deploy del Apps Script, pega aquí       -->
@@ -23,6 +25,7 @@
     --bg:#FAF7F2; --surface:#FFFFFF; --ink:#2B2722; --soft:#938A7E;
     --line:#ECE6DD; --line2:#E2DACE;
     --cejas:#7CB342; --pestanas:#E8924B; --facial:#4A90D9;
+    --brand:#5B3BC4; --brand-deep:#2E1A6B; --brand-soft:#EDE8FA;
     --shadow:0 1px 2px rgba(43,39,34,.04),0 8px 24px rgba(43,39,34,.06);
     --radius:18px;
   }
@@ -32,9 +35,8 @@
   #app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
   .display{font-family:"Fraunces",serif}
 
-  header{padding:22px 20px 14px;display:flex;align-items:baseline;justify-content:space-between}
-  .brand{font-family:"Fraunces",serif;font-weight:600;font-size:30px;letter-spacing:.5px}
-  .brand small{font-weight:400;color:var(--soft);font-size:14px;font-family:"Outfit",sans-serif;letter-spacing:.4px;margin-left:8px}
+  header{padding:20px 20px 12px;display:flex;align-items:center;justify-content:flex-start}
+  .logo{height:34px;width:auto;display:block;mix-blend-mode:multiply}
   main{flex:1;padding:4px 16px 110px;overflow-y:auto}
 
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -54,7 +56,7 @@
   /* search + list */
   .search{width:100%;padding:13px 16px;border:1px solid var(--line2);border-radius:14px;background:var(--surface);
     font-family:inherit;font-size:15px;color:var(--ink);outline:none}
-  .search:focus{border-color:var(--ink)}
+  .search:focus{border-color:var(--brand)}
   .list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
   .svc{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;
     background:var(--surface);cursor:pointer;box-shadow:var(--shadow);transition:transform .12s ease}
@@ -67,7 +69,7 @@
   /* date */
   .date-input{width:100%;padding:14px 16px;border:1px solid var(--line2);border-radius:14px;background:var(--surface);
     font-family:inherit;font-size:16px;color:var(--ink);outline:none}
-  .date-input:focus{border-color:var(--ink)}
+  .date-input:focus{border-color:var(--brand)}
 
   /* slots */
   .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
@@ -80,9 +82,9 @@
   label{display:block;font-size:13px;color:var(--soft);margin:14px 4px 6px}
   .inp{width:100%;padding:14px 16px;border:1px solid var(--line2);border-radius:14px;background:var(--surface);
     font-family:inherit;font-size:16px;color:var(--ink);outline:none}
-  .inp:focus{border-color:var(--ink)}
+  .inp:focus{border-color:var(--brand)}
 
-  .btn{width:100%;padding:16px;border:none;border-radius:16px;background:var(--ink);color:#fff;
+  .btn{width:100%;padding:16px;border:none;border-radius:16px;background:linear-gradient(135deg,#3A2280,#6B4AD0);color:#fff;
     font-family:inherit;font-size:16px;font-weight:500;cursor:pointer;transition:opacity .15s ease,transform .12s ease;margin-top:18px}
   .btn:active{transform:scale(.99)}
   .btn:disabled{opacity:.4;cursor:default}
@@ -115,7 +117,7 @@
   .tabwrap{max-width:480px;width:100%;display:flex}
   .tab{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
     padding:6px;color:var(--soft);font-family:inherit;font-size:11px;font-weight:500}
-  .tab.on{color:var(--ink)}
+  .tab.on{color:var(--brand-deep)}
   .tab svg{width:23px;height:23px}
 
   .spinner{width:26px;height:26px;border:2.5px solid var(--line2);border-top-color:var(--ink);border-radius:50%;
@@ -179,7 +181,7 @@ function App(){
   return (
     <div id="app">
       <header>
-        <div className="brand">SYNA<small>agenda</small></div>
+        <img className="logo" src="Logo_Syna.png" alt="SYNA agenda" />
       </header>
       <main>
         {cargando ? <div className="spinner"></div> :
