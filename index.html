@@ -104,6 +104,27 @@
 
   .empty{text-align:center;color:var(--soft);padding:48px 20px;font-size:15px}
 
+  /* boton salir en header */
+  #app header{justify-content:space-between}
+  .logout{background:none;border:none;color:var(--soft);cursor:pointer;padding:6px;display:flex;align-items:center}
+  .logout svg{width:22px;height:22px}
+
+  /* pantalla de login (paleta imagen 4) */
+  .login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;
+    padding:36px 28px calc(26px + env(safe-area-inset-bottom));position:relative;overflow:hidden}
+  .login .glow{position:absolute;left:50%;bottom:-200px;transform:translateX(-50%);
+    width:560px;height:470px;z-index:0;pointer-events:none;opacity:.5;filter:blur(8px);
+    background:radial-gradient(circle,#8567D6 0%,#5328E0 36%,rgba(83,40,224,0) 70%)}
+  .login-in{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;max-width:340px;margin:0 auto}
+  .login .lg{height:46px;width:auto;align-self:center;mix-blend-mode:multiply;margin-bottom:30px}
+  .login .field{margin-bottom:12px}
+  .login .field label{margin:0 0 6px 4px}
+  .login .err{color:#D7263D;font-size:13.5px;text-align:center;margin-top:12px}
+  .login .desc{text-align:center;color:var(--soft);font-size:13.5px;line-height:1.55;margin:26px 6px 0}
+  .login .dev{text-align:center;margin-top:34px}
+  .login .dev .by{font-size:10px;letter-spacing:1.6px;color:var(--soft);text-transform:uppercase}
+  .login .dev .co{font-size:14px;font-weight:700;color:var(--brand-deep);letter-spacing:.6px;margin-top:3px}
+
   /* chat estilo Mensajes */
   .chat-msgs{display:flex;flex-direction:column;gap:7px;padding:6px 0 84px}
   .bubble{max-width:80%;padding:9px 14px;border-radius:19px;font-size:16px;line-height:1.35;white-space:pre-wrap}
@@ -168,13 +189,14 @@ const ESTADOS={confirmada:['#EAF3DE','#3B6D11'],pendiente:['#FAEEDA','#854F0B'],
 
 /* ---------- App ---------- */
 function App(){
+  const [authed,setAuthed]=useState(()=>{ try{ return sessionStorage.getItem('syna_auth')==='1'; }catch(e){ return false; } });
   const [tab,setTab]=useState('reservar');
   const [areas,setAreas]=useState([]);
   const [servicios,setServicios]=useState([]);
   const [cargando,setCargando]=useState(true);
   const [err,setErr]=useState('');
 
-  useEffect(()=>{(async()=>{
+  useEffect(()=>{ if(!authed) return; (async()=>{
     try{
       const [a,s]=await Promise.all([apiGet('getAreas'),apiGet('getServicios')]);
       if(a.ok) setAreas(a.areas);
@@ -182,14 +204,21 @@ function App(){
       if(!a.ok||!s.ok) setErr('No se pudo cargar el catálogo.');
     }catch(e){ setErr('Error de conexión con la API.'); }
     setCargando(false);
-  })()},[]);
+  })()},[authed]);
 
   const colorArea = nm => (areas.find(a=>a.area===nm)||{}).color || '#999';
+  const onLogin = () => { try{ sessionStorage.setItem('syna_auth','1'); }catch(e){} setAuthed(true); };
+  const salir   = () => { try{ sessionStorage.removeItem('syna_auth'); }catch(e){} setAuthed(false); };
+
+  if(!authed) return <Login onLogin={onLogin}/>;
 
   return (
     <div id="app">
       <header>
         <img className="logo" src="Logo_Syna.png" alt="SYNA agenda" />
+        <button className="logout" onClick={salir} title="Salir" aria-label="Salir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
       </header>
       <main>
         {cargando ? <div className="spinner"></div> :
@@ -436,6 +465,50 @@ function Asistente(){
           onKeyDown={e=>{ if(e.key==='Enter') enviar(); }} />
         <button className="send" disabled={cargando||!input.trim()} onClick={enviar}>↑</button>
       </div></div>
+    </div>
+  );
+}
+
+/* ---------- Login (acceso a la app) ---------- */
+function Login({onLogin}){
+  const [u,setU]=useState('');
+  const [pw,setPw]=useState('');
+  const [cargando,setCargando]=useState(false);
+  const [err,setErr]=useState('');
+  const entrar=async()=>{
+    if(!u.trim()||!pw){ setErr('Ingresa usuario y contraseña'); return; }
+    setCargando(true); setErr('');
+    try{
+      const r=await apiPost('login',{usuario:u.trim(),password:pw});
+      if(r&&r.ok) onLogin(r); else setErr((r&&r.error)||'No se pudo ingresar');
+    }catch(e){ setErr('Error de conexión'); }
+    setCargando(false);
+  };
+  return (
+    <div className="login">
+      <div className="glow"></div>
+      <div className="login-in">
+        <img className="lg" src="Logo_Syna.png" alt="SYNA" />
+        <div className="field">
+          <label>Usuario</label>
+          <input className="inp" value={u} autoCapitalize="none" autoCorrect="off"
+            onChange={e=>setU(e.target.value)} placeholder="Tu usuario" />
+        </div>
+        <div className="field">
+          <label>Contraseña</label>
+          <input className="inp" type="password" value={pw} placeholder="••••••••"
+            onChange={e=>setPw(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter') entrar(); }} />
+        </div>
+        <button className="btn" disabled={cargando} onClick={entrar}>
+          {cargando?'Ingresando…':'Ingresar'}</button>
+        {err && <div className="err">{err}</div>}
+        <div className="desc">SYNA es la agenda inteligente de tu centro de estética. Reserva, reagenda y organiza las citas de todas tus áreas en un solo lugar.</div>
+        <div className="dev">
+          <div className="by">Desarrollado por</div>
+          <div className="co">DESOUSATECH S.A.</div>
+        </div>
+      </div>
     </div>
   );
 }
