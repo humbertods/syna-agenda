@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F4F5F7" />
 <title>SYNA · Agenda</title>
-<link rel="icon" type="image/png" href="icon_SYNA.png" />
-<link rel="apple-touch-icon" href="icon_SYNA.png" />
+<link rel="icon" type="image/png" href="logo_icon_solo.png" />
+<link rel="apple-touch-icon" href="logo_icon_solo.png" />
 
 <!-- ============================================================= -->
 <!--  CONFIG: si cambias el deploy del Apps Script, pega aquí       -->
@@ -38,7 +38,7 @@
   .display{font-weight:700;letter-spacing:-.02em}
 
   header{padding:14px 18px 4px;display:flex;align-items:center;justify-content:flex-start}
-  .logo{height:30px;width:auto;display:block;mix-blend-mode:multiply}
+  .logo{height:34px;width:auto;display:block}
   main{flex:1;padding:0 16px 110px;overflow-y:auto}
 
   .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}
@@ -114,11 +114,12 @@
   /* pantalla de login (paleta imagen 4) */
   .login{min-height:100dvh;background:var(--panel);display:flex;flex-direction:column;justify-content:center;
     padding:36px 28px calc(26px + env(safe-area-inset-bottom));position:relative;overflow:hidden}
-  .login .glow{position:absolute;left:50%;bottom:-200px;transform:translateX(-50%);
-    width:560px;height:470px;z-index:0;pointer-events:none;opacity:.5;filter:blur(8px);
-    background:radial-gradient(circle,#8567D6 0%,#5328E0 36%,rgba(83,40,224,0) 70%)}
+  .login .glow{position:absolute;left:50%;bottom:-180px;transform:translateX(-50%);
+    width:440px;height:360px;z-index:0;pointer-events:none;opacity:.28;filter:blur(12px);
+    background:radial-gradient(circle,#8567D6 0%,#5328E0 38%,rgba(83,40,224,0) 70%)}
+  .login .lg-wm{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);width:300px;height:auto;opacity:.05;z-index:0;pointer-events:none}
   .login-in{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;max-width:340px;margin:0 auto}
-  .login .lg{height:46px;width:auto;align-self:center;mix-blend-mode:multiply;margin-bottom:30px}
+  .login .lg{height:112px;width:auto;align-self:center;margin-bottom:34px;position:relative;z-index:1}
   .login .field{margin-bottom:12px}
   .login .field label{margin:0 0 6px 4px}
   .login .err{color:#D7263D;font-size:13.5px;text-align:center;margin-top:12px}
@@ -357,7 +358,7 @@ function App(){
   return (
     <div id="app">
       <header>
-        <img className="logo" src="Logo_Syna.png" alt="SYNA agenda" />
+        <img className="logo" src="logo_icon_solo.png" alt="SYNA" />
         <button className="logout" onClick={salir} title="Salir" aria-label="Salir">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
@@ -901,8 +902,9 @@ function Login({onLogin}){
   return (
     <div className="login">
       <div className="glow"></div>
+      <img className="lg-wm" src="logo_icon_solo.png" alt="" aria-hidden="true" />
       <div className="login-in">
-        <img className="lg" src="Logo_Syna.png" alt="SYNA" />
+        <img className="lg" src="logo_icon_solo.png" alt="SYNA" />
         <div className="field">
           <label>Usuario</label>
           <input className="inp" value={u} autoCapitalize="none" autoCorrect="off"
