@@ -292,6 +292,70 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .fade{animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ---- Agenda operativa (día) ---- */
+  .day-nav{display:flex;align-items:center;gap:8px;margin:4px 0 2px}
+  .day-arrow{width:36px;height:40px;flex:0 0 auto;border:none;border-radius:12px;background:var(--surface);color:var(--brand);
+    font-size:22px;cursor:pointer;box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .day-arrow:active{transform:scale(.94)}
+  .day-label{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;
+    background:var(--surface);border-radius:12px;padding:10px 12px;box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .day-name{font-weight:700;font-size:15px;color:var(--ink);text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day-cal{font-size:13px;opacity:.55}
+  .hoy-btn{display:block;margin:8px auto 0;background:none;border:none;color:var(--brand);font-weight:700;font-size:13px;cursor:pointer}
+
+  .ag-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 10px}
+  .ag-m{background:var(--surface);border-radius:14px;padding:10px 6px;text-align:center;box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .ag-m.tot{background:linear-gradient(135deg,#6B46D6,#9173E6);color:#fff}
+  .ag-m-t{font-size:11px;letter-spacing:.4px;text-transform:uppercase;opacity:.7;font-weight:600}
+  .ag-m.tot .ag-m-t{opacity:.85}
+  .ag-m-n{font-size:21px;font-weight:800;line-height:1.15;margin-top:2px}
+  .ag-m-v{font-size:12.5px;font-weight:700;color:var(--brand)}
+  .ag-m.tot .ag-m-v{color:#fff}
+
+  .occ.card{padding:12px 14px;margin-bottom:12px}
+  .occ-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .occ-lbl{width:58px;flex:0 0 auto;font-size:12px;font-weight:600;color:var(--soft)}
+  .occ-bar{flex:1;height:11px;background:#E7E5DF;border-radius:7px;overflow:hidden}
+  .occ-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,#6B46D6,#9173E6);transition:width .4s ease}
+  .occ-fill.tarde{background:linear-gradient(90deg,#E0922F,#F0B45E)}
+  .occ-pct{width:40px;flex:0 0 auto;text-align:right;font-size:12.5px;font-weight:700;color:var(--ink)}
+  .occ-stats{display:flex;justify-content:space-between;gap:8px;margin-top:6px;padding-top:10px;border-top:1px solid var(--line);
+    font-size:12px;font-weight:600;color:var(--soft);flex-wrap:wrap}
+
+  .ag-filtros{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 6px}
+  .ag-fchip{padding:6px 13px;border-radius:999px;border:.5px solid var(--line2);background:var(--surface);
+    font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer}
+  .ag-fchip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  .ag-block{margin-top:18px}
+  .ag-block.tarde{margin-top:26px;padding-top:18px;border-top:2px dashed var(--line2)}
+  .ag-block-h{display:flex;align-items:baseline;justify-content:space-between;padding:0 2px 8px;
+    font-size:13px;letter-spacing:1.5px;font-weight:800;color:var(--ink);text-transform:uppercase;border-bottom:2px solid var(--ink);margin-bottom:10px}
+  .ag-block.tarde .ag-block-h{border-bottom-color:#E0922F;color:#B96E16}
+  .ag-block-sub{font-size:11px;letter-spacing:.3px;font-weight:600;color:var(--soft);text-transform:none}
+  .ag-vacio{color:var(--soft);font-size:13px;padding:8px 4px}
+
+  .ag-cita{display:flex;align-items:center;gap:11px;background:var(--surface);border-radius:12px;padding:10px 13px;margin-top:8px;
+    border-left:4px solid #C9C6BD;box-shadow:0 1px 4px rgba(40,30,80,.07)}
+  .ag-time{flex:0 0 auto;width:48px;font-weight:700;font-size:14px;color:var(--ink);line-height:1.1}
+  .ag-time small{display:block;font-size:10.5px;font-weight:500;color:var(--soft)}
+  .ag-info{flex:1;min-width:0}
+  .ag-cli{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ag-srv{font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .ag-pric{flex:0 0 auto;font-weight:800;font-size:13px;color:var(--ink)}
+  .ag-cita.cat-premium{background:#FFF8DC;border-left-color:#E0A100}
+  .ag-cita.cat-premium .ag-cli{font-weight:800}
+  .ag-cita.cat-premium .ag-pric{color:#9A6E00}
+  .ag-cita.cat-combo{background:#FFE8D4;border-left-color:#E27B2C}
+  .ag-cita.cat-correccion{background:#FCE3EC;border-left-color:#D6457E}
+  .ag-cita.cat-facial{background:#E4EFFB;border-left-color:#3D7DCB}
+  .ag-cita.cat-retoque{background:#E7F3DF;border-left-color:#5DA02E}
+
+  .ag-libre{display:flex;align-items:center;gap:9px;margin-top:8px;padding:9px 13px;border-radius:12px;
+    background:#ECF6E1;border:1.5px dashed #9CC97A;color:#4C7A1F;font-size:13px;font-weight:600}
+  .ag-libre small{font-weight:500;color:#6E9A45}
+  .ag-libre-dot{width:9px;height:9px;border-radius:50%;background:#69B021;flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -615,46 +679,104 @@ function ReagendarModal({reserva,servicios,colorArea,onClose,onDone}){
 /* ---------- Agenda / Calendario del mes ---------- */
 function Agenda({servicios,colorArea}){
   const ahora=new Date();
-  const [cursor,setCursor]=useState({y:ahora.getFullYear(), m:ahora.getMonth()});
+  const [cur,setCur]=useState({y:ahora.getFullYear(),m:ahora.getMonth()});
   const [mesData,setMesData]=useState(null);
   const [sel,setSel]=useState(hoy());
+  const [filtro,setFiltro]=useState('todos');
   const [reagendar,setReagendar]=useState(null);
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
   const pad2=n=>String(n).padStart(2,'0');
-  const mesStr=`${cursor.y}-${pad2(cursor.m+1)}`;
-
-  const cargarMes=async()=>{
-    setMesData(null);
-    try{ const r=await apiGet('getReservasMes',{mes:mesStr}); setMesData(r.ok?r.reservas:[]); }
-    catch(e){ setMesData([]); }
-  };
-  useEffect(()=>{cargarMes()},[cursor.y,cursor.m]);
-
-  const cancelar=async(id)=>{
-    if(!confirm('¿Eliminar esta cita?')) return;
-    await apiPost('cancelarReserva',{id}); cargarMes();
-  };
-
-  const conCitas=useMemo(()=>{ const set={};
-    (mesData||[]).forEach(r=>{ if(r.estado!=='cancelada'){ const d=+r.fecha.slice(8,10); set[d]=(set[d]||0)+1; } });
-    return set; },[mesData]);
-
-  // construir grilla (lunes primero)
-  const primeroDow=new Date(cursor.y,cursor.m,1).getDay();      // 0 dom..6 sab
-  const offset=(primeroDow===0?6:primeroDow-1);
-  const diasMes=new Date(cursor.y,cursor.m+1,0).getDate();
-  const celdas=[]; for(let i=0;i<offset;i++) celdas.push(null);
-  for(let d=1;d<=diasMes;d++) celdas.push(d);
-
-  const hoyStr=hoy();
-  const fechaDe=d=>`${cursor.y}-${pad2(cursor.m+1)}-${pad2(d)}`;
-  const cambiarMes=delta=>{ let m=cursor.m+delta,y=cursor.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} setCursor({y,m}); };
+  const mesStr=`${cur.y}-${pad2(cur.m+1)}`;
+  const cargarMes=async()=>{ setMesData(null);
+    try{ const r=await apiGet('getReservasMes',{mes:mesStr}); setMesData(r.ok?r.reservas:[]); }catch(e){ setMesData([]); } };
+  useEffect(()=>{cargarMes()},[cur.y,cur.m]);
+  const cancelar=async(id)=>{ if(!confirm('¿Eliminar esta cita?'))return; await apiPost('cancelarReserva',{id}); cargarMes(); };
 
   const selEnMes=sel.slice(0,7)===mesStr;
-  const selDow=new Date(sel+'T12:00:00').getDay();
-  const esDomingo=selDow===0;
-  const delDia=(mesData||[]).filter(r=>r.fecha===sel).sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio));
+  const data=useMemo(()=> (mesData||[]).filter(r=>r.fecha===sel), [mesData,sel]);
+  const conCitas=useMemo(()=>{ const s={}; (mesData||[]).forEach(r=>{ const e=(r.estado||'').toLowerCase(); if(e!=='cancelada'&&e!=='no_show'){ const d=+r.fecha.slice(8,10); s[d]=(s[d]||0)+1; } }); return s; },[mesData]);
+
+  const hoyStr=hoy();
+  const pm=t=>{ const m=String(t).match(/(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null; };
+  const hhmm=m=>{ const z=n=>(n<10?'0':'')+n; return z(Math.floor(m/60))+':'+z(m%60); };
+  const money=n=>'$'+Math.round(n||0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+
+  // Horario del día (réplica de la hoja Horarios)
+  const HOR={1:['09:00','19:00'],2:['09:00','19:00'],3:['09:00','19:00'],4:['09:00','19:00'],5:['09:00','19:00'],6:['08:00','17:00'],0:null};
+  const dow=new Date(sel+'T12:00:00').getDay(); const hh=HOR[dow]; const cerrado=!hh;
+  const abre=hh?pm(hh[0]):540, cierra=hh?pm(hh[1]):1140, CORTE=13*60;
+
+  const catDe=(svc)=>{ if(!svc)return 'normal';
+    const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), p=+svc.precio||0;
+    if(a==='facial')return 'facial';
+    if(g.indexOf('retoque')>=0 || n.indexOf('retoque')===0)return 'retoque';
+    if(g.indexOf('combo')>=0 || n.indexOf('combo')>=0 || n.indexOf('paquete')>=0)return 'combo';
+    if(n.indexOf('neutraliz')>=0 || n.indexOf('correcc')>=0)return 'correccion';
+    if(a==='pestañas' || g.indexOf('extensiones')>=0 || g.indexOf('permanente')>=0 || n.indexOf('volumen')>=0 || n.indexOf('hawaiano')>=0 || n.indexOf('mega')>=0 || n.indexOf('efecto polvo')>=0 || p>=50)return 'premium';
+    return 'normal'; };
+
+  const citas=useMemo(()=> (data||[])
+    .filter(r=>{ const e=(r.estado||'').toLowerCase(); return e!=='cancelada' && e!=='no_show'; })
+    .map(r=>{ const svc=svcMap[r.servicio_id]; const ini=pm(r.hora_inicio); let fin=pm(r.hora_fin);
+      if(fin==null||fin<=ini) fin=ini+((svc&&svc.duracion)||30);
+      return {...r, ini, fin, svc, precio:(svc&&+svc.precio)||0, cat:catDe(svc)}; })
+    .filter(c=>c.ini!=null).sort((a,b)=>a.ini-b.ini), [data,svcMap]);
+
+  const enBloque=(c,b0,b1)=> c.ini>=b0 && c.ini<b1;
+  const mCitas=citas.filter(c=>enBloque(c,abre,CORTE));
+  const tCitas=citas.filter(c=>enBloque(c,CORTE,cierra+1));
+  const suma=arr=>arr.reduce((s,c)=>s+c.precio,0);
+  const mVal=suma(mCitas), tVal=suma(tCitas), totVal=mVal+tVal;
+  const premiumCount=citas.filter(c=>c.cat==='premium').length;
+
+  const ocupado=(b0,b1)=>{ const iv=citas.map(c=>[Math.max(c.ini,b0),Math.min(c.fin,b1)]).filter(p=>p[1]>p[0]).sort((a,b)=>a[0]-b[0]);
+    let cov=0,end=-1; iv.forEach(p=>{ const s=Math.max(p[0],end); if(p[1]>s)cov+=p[1]-s; end=Math.max(end,p[1]); });
+    const span=b1-b0; return span>0?Math.min(100,Math.round(cov/span*100)):0; };
+  const mOcc=ocupado(abre,CORTE), tOcc=ocupado(CORTE,cierra);
+  const libresEn=(b0,b1)=>{ let n=0; for(let t=b0;t+15<=b1;t+=15){ if(!citas.some(c=>c.ini<t+15 && c.fin>t))n++; } return n; };
+  const libresTot=libresEn(abre,CORTE)+libresEn(CORTE,cierra);
+
+  const pasaFiltro=c=>{ if(filtro==='todos')return true;
+    if(filtro==='premium')return c.cat==='premium';
+    if(filtro==='retoques')return c.cat==='retoque';
+    const a=(c.area||'').toLowerCase();
+    if(filtro==='pestanas')return a==='pestañas';
+    if(filtro==='cejas')return a==='cejas';
+    if(filtro==='facial')return a==='facial';
+    return true; };
+  const filas=(b0,b1)=>{ const disp=citas.filter(c=>c.ini>=b0 && c.ini<b1 && pasaFiltro(c));
+    if(filtro!=='todos') return disp.map(c=>({type:'cita',c}));
+    let cur=b0; citas.forEach(c=>{ if(c.ini<b0 && c.fin>b0) cur=Math.max(cur,Math.min(c.fin,b1)); });
+    const rows=[]; disp.forEach(c=>{ if(c.ini-cur>=15) rows.push({type:'libre',a:cur,b:c.ini}); rows.push({type:'cita',c}); cur=Math.max(cur,Math.min(c.fin,b1)); });
+    if(b1-cur>=15) rows.push({type:'libre',a:cur,b:b1});
+    return rows; };
+
+  const filaCita=(c)=>(
+    <SwipeRow key={c.id} onReagendar={()=>setReagendar(c)} onEliminar={()=>cancelar(c.id)}>
+      <div className={"ag-cita cat-"+c.cat}>
+        <div className="ag-time">{hhmm(c.ini)}<small>{hhmm(c.fin)}</small></div>
+        <div className="ag-info">
+          <div className="ag-cli">{c.cliente_nombre||'—'}</div>
+          <div className="ag-srv">{c.svc?c.svc.servicio:c.servicio_id}</div>
+        </div>
+        {c.precio?<div className="ag-pric">{money(c.precio)}</div>:null}
+      </div>
+    </SwipeRow>
+  );
+  const renderFilas=rows=> rows.length===0
+    ? <div className="ag-vacio">Sin citas</div>
+    : rows.map((row,i)=> row.type==='libre'
+        ? <div key={'l'+i} className="ag-libre"><span className="ag-libre-dot"></span>Libre · {hhmm(row.a)}–{hhmm(row.b)} <small>({row.b-row.a} min)</small></div>
+        : filaCita(row.c));
+
+  const FILTROS=[['todos','Todos'],['premium','✨ Premium'],['pestanas','Pestañas'],['cejas','Cejas'],['facial','Faciales'],['retoques','Retoques']];
+
+  const fechaDe=d=>`${cur.y}-${pad2(cur.m+1)}-${pad2(d)}`;
+  const primeroDow=new Date(cur.y,cur.m,1).getDay(); const off=(primeroDow===0?6:primeroDow-1);
+  const diasMes=new Date(cur.y,cur.m+1,0).getDate();
+  const celdas=[]; for(let i=0;i<off;i++)celdas.push(null); for(let d=1;d<=diasMes;d++)celdas.push(d);
+  const cambiarMes=delta=>{let m=cur.m+delta,y=cur.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCur({y,m});};
 
   return (
     <div className="fade">
@@ -663,53 +785,48 @@ function Agenda({servicios,colorArea}){
       <div className="cal card">
         <div className="cal-head">
           <button className="cal-nav" onClick={()=>cambiarMes(-1)} aria-label="Mes anterior">‹</button>
-          <div className="cal-mes">{MESES_L[cursor.m]}{cursor.y!==ahora.getFullYear()?(' '+cursor.y):''}</div>
+          <div className="cal-mes">{MESES_L[cur.m]}{cur.y!==ahora.getFullYear()?(' '+cur.y):''}</div>
           <button className="cal-nav" onClick={()=>cambiarMes(1)} aria-label="Mes siguiente">›</button>
         </div>
-        <div className="cal-dows">
-          {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=>
-            <span key={i} className={"cal-dow"+(i===5?' sab':'')+(i===6?' dom':'')}>{d}</span>)}
-        </div>
+        <div className="cal-dows">{['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=><span key={i} className={"cal-dow"+(i===5?' sab':'')+(i===6?' dom':'')}>{d}</span>)}</div>
         <div className="cal-grid">
-          {celdas.map((d,i)=>{
-            if(d===null) return <span key={i} className="cal-cell empty"></span>;
-            const col=i%7, f=fechaDe(d);
-            const cls="cal-cell"+(f===sel?' sel':'')+(f===hoyStr?' hoy':'')+(col===6?' dom':'')+(col===5?' sab':'');
-            return (
-              <button key={i} className={cls} onClick={()=>setSel(f)}>
-                <span className="cd">{d}</span>
-                <span className={"cdot"+(conCitas[d]?'':' ghost')}></span>
-              </button>
-            );
-          })}
+          {celdas.map((d,i)=>{ if(d===null)return <span key={i} className="cal-cell empty"></span>;
+            const col=i%7,f=fechaDe(d); const cls="cal-cell"+(f===sel?' sel':'')+(f===hoyStr?' hoy':'')+(col===6?' dom':'')+(col===5?' sab':'');
+            return <button key={i} className={cls} onClick={()=>setSel(f)}><span className="cd">{d}</span><span className={"cdot"+(conCitas[d]?'':' ghost')}></span></button>; })}
         </div>
       </div>
 
       <div className="sub" style={{textTransform:'capitalize'}}>{fechaLarga(sel)}</div>
-      {!selEnMes ? <div className="empty" style={{padding:'20px 0'}}>Toca un día para ver sus citas</div> :
+
+      {!selEnMes ? <div className="empty" style={{padding:'22px 0'}}>Toca un día para ver su tablero</div> :
        mesData===null ? <div className="spinner"></div> :
-       esDomingo ? <div className="empty" style={{padding:'24px 0'}}>Domingo — no laboramos 🌙</div> :
-       delDia.length===0 ? <div className="empty" style={{padding:'24px 0'}}>Sin citas este día</div> :
-       delDia.map(r=>{
-         const s=svcMap[r.servicio_id]; const c=colorArea(r.area);
-         const est=ESTADOS[r.estado]||['#F1EFE8','#5F5E5A'];
-         const tarjeta=(
-           <div className="resv" style={{borderLeftColor:c}}>
-             <div className="time">{r.hora_inicio}<small>{r.hora_fin}</small></div>
-             <div style={{flex:1,minWidth:0}}>
-               <div className="who">{r.cliente_nombre||'—'}</div>
-               <div className="what">{s?s.servicio:r.servicio_id} · {r.area} · {r.staff_asignado}</div>
-               <span className="badge" style={{background:est[0],color:est[1],marginTop:6,display:'inline-block'}}>{r.estado}</span>
-             </div>
-           </div>
-         );
-         if(r.estado==='cancelada') return <div key={r.id} style={{opacity:.55,marginTop:10}}>{tarjeta}</div>;
-         return (
-           <SwipeRow key={r.id} onReagendar={()=>setReagendar(r)} onEliminar={()=>cancelar(r.id)}>
-             {tarjeta}
-           </SwipeRow>
-         );
-       })}
+       cerrado ? <div className="empty" style={{padding:'28px 0'}}>Domingo — no laboramos 🌙</div> :
+       <>
+         <div className="ag-metrics">
+           <div className="ag-m"><div className="ag-m-t">Mañana</div><div className="ag-m-n">{mCitas.length}</div><div className="ag-m-v">{money(mVal)}</div></div>
+           <div className="ag-m"><div className="ag-m-t">Tarde</div><div className="ag-m-n">{tCitas.length}</div><div className="ag-m-v">{money(tVal)}</div></div>
+           <div className="ag-m tot"><div className="ag-m-t">Día</div><div className="ag-m-n">{citas.length}</div><div className="ag-m-v">{money(totVal)}</div></div>
+         </div>
+
+         <div className="occ card">
+           <div className="occ-row"><span className="occ-lbl">Mañana</span><div className="occ-bar"><div className="occ-fill" style={{width:mOcc+'%'}}></div></div><span className="occ-pct">{mOcc}%</span></div>
+           <div className="occ-row"><span className="occ-lbl">Tarde</span><div className="occ-bar"><div className="occ-fill tarde" style={{width:tOcc+'%'}}></div></div><span className="occ-pct">{tOcc}%</span></div>
+           <div className="occ-stats"><span>✨ {premiumCount} premium</span><span>🟢 {libresTot} libres</span><span>{money(totVal)} agendado</span></div>
+         </div>
+
+         <div className="ag-filtros">
+           {FILTROS.map(([k,l])=><button key={k} className={"ag-fchip"+(filtro===k?' on':'')} onClick={()=>setFiltro(k)}>{l}</button>)}
+         </div>
+
+         <div className="ag-block">
+           <div className="ag-block-h"><span>MAÑANA</span><span className="ag-block-sub">{hhmm(abre)} – 13:00</span></div>
+           {renderFilas(filas(abre,CORTE))}
+         </div>
+         <div className="ag-block tarde">
+           <div className="ag-block-h"><span>TARDE</span><span className="ag-block-sub">13:00 – {hhmm(cierra)}</span></div>
+           {renderFilas(filas(CORTE,cierra))}
+         </div>
+       </>}
 
       {reagendar && <ReagendarModal reserva={reagendar} servicios={servicios} colorArea={colorArea}
         onClose={()=>setReagendar(null)} onDone={()=>{setReagendar(null);cargarMes();}} />}
