@@ -111,15 +111,14 @@
   .logout{background:none;border:none;color:var(--soft);cursor:pointer;padding:6px;display:flex;align-items:center}
   .logout svg{width:22px;height:22px}
 
-  /* pantalla de login (paleta imagen 4) */
-  .login{min-height:100dvh;background:var(--panel);display:flex;flex-direction:column;justify-content:center;
+  /* pantalla de login */
+  .login{min-height:100dvh;background:var(--panel);display:flex;flex-direction:column;justify-content:flex-start;
     padding:36px 28px calc(26px + env(safe-area-inset-bottom));position:relative;overflow:hidden}
-  .login .glow{position:absolute;left:50%;bottom:-180px;transform:translateX(-50%);
-    width:440px;height:360px;z-index:0;pointer-events:none;opacity:.28;filter:blur(12px);
-    background:radial-gradient(circle,#8567D6 0%,#5328E0 38%,rgba(83,40,224,0) 70%)}
-  .login .lg-wm{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);width:300px;height:auto;opacity:.05;z-index:0;pointer-events:none}
-  .login-in{position:relative;z-index:1;display:flex;flex-direction:column;width:100%;max-width:340px;margin:0 auto}
-  .login .lg{height:112px;width:auto;align-self:center;margin-bottom:34px;position:relative;z-index:1}
+  .login .lg-wm{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);width:300px;height:auto;opacity:.04;z-index:0;pointer-events:none}
+  .login-in{position:relative;z-index:1;display:flex;flex-direction:column;flex:1;width:100%;max-width:340px;margin:0 auto;padding-top:5vh}
+  .login-top{display:flex;flex-direction:column}
+  .login-bottom{margin-top:auto;padding-top:24px}
+  .login .lg{height:150px;width:auto;align-self:center;margin-bottom:30px;position:relative;z-index:1}
   .login .field{margin-bottom:12px}
   .login .field label{margin:0 0 6px 4px}
   .login .err{color:#D7263D;font-size:13.5px;text-align:center;margin-top:12px}
@@ -901,28 +900,31 @@ function Login({onLogin}){
   };
   return (
     <div className="login">
-      <div className="glow"></div>
       <img className="lg-wm" src="logo_icon_solo.png" alt="" aria-hidden="true" />
       <div className="login-in">
-        <img className="lg" src="logo_icon_solo.png" alt="SYNA" />
-        <div className="field">
-          <label>Usuario</label>
-          <input className="inp" value={u} autoCapitalize="none" autoCorrect="off"
-            onChange={e=>setU(e.target.value)} placeholder="Tu usuario" />
+        <div className="login-top">
+          <img className="lg" src="logo_icon_solo.png" alt="SYNA" />
+          <div className="field">
+            <label>Usuario</label>
+            <input className="inp" value={u} autoCapitalize="none" autoCorrect="off"
+              onChange={e=>setU(e.target.value)} placeholder="Tu usuario" />
+          </div>
+          <div className="field">
+            <label>Contraseña</label>
+            <input className="inp" type="password" value={pw} placeholder="••••••••"
+              onChange={e=>setPw(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter') entrar(); }} />
+          </div>
+          <button className="btn" disabled={cargando} onClick={entrar}>
+            {cargando?'Ingresando…':'Ingresar'}</button>
+          {err && <div className="err">{err}</div>}
         </div>
-        <div className="field">
-          <label>Contraseña</label>
-          <input className="inp" type="password" value={pw} placeholder="••••••••"
-            onChange={e=>setPw(e.target.value)}
-            onKeyDown={e=>{ if(e.key==='Enter') entrar(); }} />
-        </div>
-        <button className="btn" disabled={cargando} onClick={entrar}>
-          {cargando?'Ingresando…':'Ingresar'}</button>
-        {err && <div className="err">{err}</div>}
-        <div className="desc">SYNA es la agenda inteligente de tu centro de estética. Reserva, reagenda y organiza las citas de todas tus áreas en un solo lugar.</div>
-        <div className="dev">
-          <div className="by">Desarrollado por</div>
-          <div className="co">DESOUSATECH S.A.</div>
+        <div className="login-bottom">
+          <div className="desc">SYNA es la agenda inteligente de tu centro de estética. Reserva, reagenda y organiza las citas de todas tus áreas en un solo lugar.</div>
+          <div className="dev">
+            <div className="by">Desarrollado por</div>
+            <div className="co">DESOUSATECH S.A.</div>
+          </div>
         </div>
       </div>
     </div>
