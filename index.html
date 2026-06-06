@@ -110,6 +110,22 @@
   #app header{justify-content:space-between}
   .logout{background:none;border:none;color:var(--soft);cursor:pointer;padding:6px;display:flex;align-items:center}
   .logout svg{width:22px;height:22px}
+  .menu-wrap{position:relative}
+  .menu-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:17px;
+    background:linear-gradient(135deg,#6B46D6,#9173E6);color:#fff;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 10px rgba(91,59,196,.35)}
+  .menu-btn:active{transform:scale(.94)}
+  .menu-ov{position:fixed;inset:0;z-index:18}
+  .menu-pop{position:absolute;top:48px;right:0;z-index:19;min-width:226px;background:var(--surface);border-radius:16px;
+    border:.5px solid rgba(0,0,0,.06);box-shadow:0 12px 32px rgba(40,30,80,.2);padding:6px;animation:fade .15s ease}
+  .menu-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;font-size:15px;color:var(--ink)}
+  .menu-sep{height:1px;background:var(--line);margin:2px 8px}
+  .menu-item{width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:15px;color:#E5484D;padding:12px;cursor:pointer;border-radius:10px}
+  .menu-item:active{background:rgba(0,0,0,.05)}
+  .sw-toggle{flex:0 0 auto;width:46px;height:28px;border-radius:16px;border:none;background:#D6D4CE;cursor:pointer;position:relative;transition:background .2s ease}
+  .sw-toggle.on{background:#34C759}
+  .sw-knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s ease}
+  .sw-toggle.on .sw-knob{transform:translateX(18px)}
 
   /* pantalla de login */
   .login{min-height:100dvh;background:var(--panel);display:flex;flex-direction:column;justify-content:flex-start;
@@ -326,6 +342,8 @@ function App(){
   const [err,setErr]=useState('');
   const [refreshKey,setRefreshKey]=useState(0);
   const [refreshing,setRefreshing]=useState(false);
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [asistenteOn,setAsistenteOn]=useState(()=>ss('syna_asis','1')!=='0');
 
   useEffect(()=>{ if(!authed) return; (async()=>{
     try{
@@ -350,6 +368,7 @@ function App(){
     setAuthed(false);
   };
   const onRefresh = () => { setRefreshing(true); setRefreshKey(k=>k+1); setTimeout(()=>setRefreshing(false),700); };
+  const toggleAsis = () => { const nv=!asistenteOn; setAsistenteOn(nv); try{ sessionStorage.setItem('syna_asis', nv?'1':'0'); }catch(e){} if(!nv && tab==='asistente') setTab('principal'); };
 
   if(!authed) return <div id="app"><Login onLogin={onLogin}/></div>;
 
@@ -357,21 +376,32 @@ function App(){
     <div id="app">
       <header>
         <img className="logo" src="logo_icon_solo.png" alt="SYNA" />
-        <button className="logout" onClick={salir} title="Salir" aria-label="Salir">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        </button>
+        <div className="menu-wrap">
+          <button className="menu-btn" onClick={()=>setMenuOpen(o=>!o)} aria-label="Menú">S</button>
+          {menuOpen && <>
+            <div className="menu-ov" onClick={()=>setMenuOpen(false)}></div>
+            <div className="menu-pop">
+              <div className="menu-row">
+                <span>Asistente virtual</span>
+                <button className={"sw-toggle"+(asistenteOn?' on':'')} onClick={toggleAsis} aria-label="Activar o desactivar asistente"><span className="sw-knob"></span></button>
+              </div>
+              <div className="menu-sep"></div>
+              <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
+            </div>
+          </>}
+        </div>
       </header>
       <main>
         {cargando ? <div className="spinner"></div> :
          err ? <div className="empty">{err}<br/><br/>Revisa que la URL de la API esté bien.</div> :
          <div key={tab+':'+refreshKey} className="view">
-           {tab==='principal'   ? <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go}/> :
+           {tab==='principal'   ? <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/> :
             tab==='calendario'  ? <Agenda servicios={servicios} colorArea={colorArea}/> :
             tab==='reservar'    ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/> :
-            tab==='asistente'   ? <Asistente/> :
+            (tab==='asistente' && asistenteOn) ? <Asistente/> :
             tab==='seguimiento' ? <Seguimiento/> :
             tab==='fidelidad'   ? <Fidelidad/> :
-            <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go}/>}
+            <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
          </div>}
       </main>
       <MenuFlotante tab={tab} go={go} onRefresh={onRefresh} refreshing={refreshing}/>
@@ -784,7 +814,7 @@ function MenuFlotante({tab,go,onRefresh,refreshing}){
 }
 
 /* ---------- Principal (dashboard) ---------- */
-function Principal({rol,nombre,colorArea,go}){
+function Principal({rol,nombre,colorArea,go,asistenteOn}){
   const [d,setD]=useState(null);
   const [err,setErr]=useState('');
   useEffect(()=>{(async()=>{
@@ -818,7 +848,7 @@ function Principal({rol,nombre,colorArea,go}){
 
       <div className="qa">
         <button className="qa-btn" onClick={()=>go('reservar')}>＋ Nueva reserva</button>
-        <button className="qa-btn ghost" onClick={()=>go('asistente')}>✨ Asistente</button>
+        {asistenteOn && <button className="qa-btn ghost" onClick={()=>go('asistente')}>✨ Asistente</button>}
       </div>
 
       <div className="stats">
