@@ -380,6 +380,30 @@
   .tl-pill-t{font-size:11px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tl-pill-s{font-size:10.5px;font-weight:500;opacity:.85;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tl-hint{font-size:11.5px;color:var(--soft);text-align:center;margin-top:10px}
+
+  /* ---- Agendar (multi-servicio) ---- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+  .sel{width:100%;border:1px solid var(--line2);border-radius:12px;padding:12px;font-family:inherit;font-size:15px;
+    background:var(--surface);color:var(--ink)}
+  .sel:disabled{opacity:.5}
+  .seg{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+  .seg-b{padding:8px 13px;border-radius:999px;border:.5px solid var(--line2);background:var(--surface);
+    font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+  .seg-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .srow{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;
+    display:flex;flex-direction:column;gap:8px}
+  .srow-h{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:700;
+    color:var(--soft);text-transform:uppercase;letter-spacing:.5px}
+  .srow-x{background:none;border:none;font-size:21px;line-height:1;color:var(--soft);cursor:pointer;padding:0 2px}
+  .addx{width:100%;background:#1A1726;color:#fff;border:none;border-radius:14px;padding:14px;font-family:inherit;
+    font-size:15px;font-weight:700;cursor:pointer;margin-bottom:6px}
+  .addx:active{opacity:.85}
+  .promo-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:6px}
+  .promo-t{font-size:11.5px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .promo-chip{display:inline-block;background:#F0EEF8;color:var(--brand-deep);border-radius:999px;padding:5px 11px;
+    font-size:12.5px;font-weight:600;margin:0 6px 6px 0}
+  .tot-line{font-size:14px;font-weight:700;color:var(--ink);text-align:center;margin:14px 0 2px}
+  .aviso{color:#A32D2D;font-size:14px;margin-top:12px;text-align:center}
 </style>
 </head>
 <body>
@@ -497,138 +521,129 @@ function App(){
   );
 }
 
-/* ---------- Flujo de reservar ---------- */
+/* ---------- Flujo de reservar (multi-servicio) ---------- */
 function Reservar({areas,servicios,colorArea}){
-  const [paso,setPaso]=useState(1);
-  const [area,setArea]=useState(null);
-  const [svc,setSvc]=useState(null);
-  const [fecha,setFecha]=useState(hoy());
-  const [slots,setSlots]=useState(null);
-  const [cerrado,setCerrado]=useState(false);
-  const [hora,setHora]=useState(null);
-  const [q,setQ]=useState('');
   const [nombre,setNombre]=useState('');
   const [tel,setTel]=useState('');
+  const [dia,setDia]=useState(hoy());
+  const [hora,setHora]=useState('');
+  const [tipo,setTipo]=useState('normal');
+  const [filas,setFilas]=useState([{area:'',sid:''}]);
+  const [promos,setPromos]=useState(null);
+  const [promoNum,setPromoNum]=useState('');
+  const [slots,setSlots]=useState(null);
+  const [cerrado,setCerrado]=useState(false);
   const [enviando,setEnviando]=useState(false);
-  const [reserva,setReserva]=useState(null);
   const [aviso,setAviso]=useState('');
+  const [hecho,setHecho]=useState(null);
 
-  const reset=()=>{setPaso(1);setArea(null);setSvc(null);setFecha(hoy());setSlots(null);
-    setHora(null);setQ('');setNombre('');setTel('');setReserva(null);setAviso('');};
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getPromos'); setPromos(r.ok?r.promos:[]); }catch(e){ setPromos([]); } })(); },[]);
 
-  const cargarSlots=async(servId,f)=>{
-    setSlots(null);setCerrado(false);setHora(null);
-    try{
-      const r=await apiGet('getDisponibilidad',{servicio_id:servId,fecha:f});
-      if(r.ok){ setSlots(r.slots||[]); setCerrado(!!r.cerrado); }
-      else { setSlots([]); setAviso(r.error||'Error'); }
-    }catch(e){ setSlots([]); setAviso('Error de conexión'); }
-  };
+  const svcPorId=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
+  const promo=(promos||[]).find(p=>p.numero===promoNum)||null;
+  const elegidos = tipo==='promo' ? (promo?promo.servicios:[]) : filas.map(f=>f.sid).filter(Boolean);
+  const firstSid = elegidos[0]||'';
 
-  const confirmar=async()=>{
+  useEffect(()=>{ setHora(''); if(!firstSid){ setSlots(null); setCerrado(false); return; }
+    (async()=>{ setSlots(null); try{ const r=await apiGet('getDisponibilidad',{servicio_id:firstSid,fecha:dia});
+      if(r.ok){ setSlots(r.slots||[]); setCerrado(!!r.cerrado); } else setSlots([]); }catch(e){ setSlots([]); } })();
+  },[firstSid,dia]);
+
+  const money=n=>'$'+Math.round(n||0);
+  const totalPrecio = tipo==='promo' ? (promo?promo.precio:0) : elegidos.reduce((s,id)=>s+((svcPorId[id]&&+svcPorId[id].precio)||0),0);
+  const totalDur = elegidos.reduce((s,id)=>s+((svcPorId[id]&&+svcPorId[id].duracion)||0),0);
+
+  const cambiarTipo=t=>{ setTipo(t); setAviso('');
+    if(t==='normal') setFilas(f=>[f[0]||{area:'',sid:''}]);
+    else if(t==='mixto'||t==='especial') setFilas(f=>{ const n=[...f]; while(n.length<2)n.push({area:'',sid:''}); return n; }); };
+  const setFila=(i,patch)=> setFilas(f=>f.map((x,j)=>j===i?{...x,...patch}:x));
+  const addFila=()=> setFilas(f=>[...f,{area:'',sid:''}]);
+  const delFila=i=> setFilas(f=>f.length>1?f.filter((_,j)=>j!==i):f);
+
+  const agendar=async()=>{
     if(!nombre.trim()) return setAviso('Pon el nombre de la clienta');
-    setEnviando(true);setAviso('');
+    if(!elegidos.length) return setAviso(tipo==='promo'?'Elige una promoción':'Elige al menos un servicio');
+    if(!hora) return setAviso('Elige la hora');
+    setEnviando(true); setAviso('');
     try{
-      const r=await apiPost('crearReserva',{servicio_id:svc.id,fecha,hora_inicio:hora,
-        cliente_nombre:nombre.trim(),telefono:tel.trim()});
-      if(r.ok){ setReserva(r.reserva); setPaso(5); }
-      else setAviso(r.error||'No se pudo reservar');
-    }catch(e){ setAviso('Error de conexión al reservar'); }
+      const r=await apiPost('crearCitaMulti',{servicios:elegidos,fecha:dia,hora_inicio:hora,cliente_nombre:nombre.trim(),telefono:tel.trim()});
+      if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar');
+    }catch(e){ setAviso('Error de conexión'); }
     setEnviando(false);
   };
+  const reset=()=>{ setHecho(null);setNombre('');setTel('');setDia(hoy());setHora('');setTipo('normal');setFilas([{area:'',sid:''}]);setPromoNum('');setAviso(''); };
 
-  const filtrados = useMemo(()=> servicios
-    .filter(s=>s.area===area)
-    .filter(s=>s.servicio.toLowerCase().includes(q.toLowerCase())),
-    [servicios,area,q]);
-
-  /* paso 5: confirmación */
-  if(paso===5 && reserva) return (
+  if(hecho) return (
     <div className="fade" style={{textAlign:'center'}}>
-      <div className="ok-circle" style={{background:colorArea(reserva.area)}}>
+      <div className="ok-circle" style={{background:colorArea(hecho.citas[0].area)}}>
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4"><path d="M5 13l4 4L19 7"/></svg>
       </div>
-      <div className="display" style={{fontSize:22,fontWeight:600}}>¡Reserva creada!</div>
+      <div className="display" style={{fontSize:22,fontWeight:600}}>¡Cita agendada!</div>
       <div className="card summary" style={{marginTop:18,textAlign:'left'}}>
-        <div className="row"><span className="k">Servicio</span><span>{svc.servicio}</span></div>
-        <div className="row"><span className="k">Fecha</span><span>{fechaBonita(reserva.fecha)}</span></div>
-        <div className="row"><span className="k">Hora</span><span>{reserva.hora_inicio}–{reserva.hora_fin}</span></div>
-        <div className="row"><span className="k">Clienta</span><span>{reserva.cliente_nombre}</span></div>
-        <div className="row"><span className="k">Atiende</span><span>{reserva.staff_asignado}</span></div>
+        <div className="row"><span className="k">Clienta</span><span>{hecho.cliente_nombre}</span></div>
+        <div className="row"><span className="k">Fecha</span><span>{fechaBonita(hecho.fecha)}</span></div>
+        {hecho.citas.map(c=>(
+          <div className="row" key={c.id}><span className="k">{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>
+        ))}
       </div>
-      <button className="btn" onClick={reset}>Nueva reserva</button>
+      <button className="btn" onClick={reset}>Nueva cita</button>
     </div>
   );
 
   return (
     <div className="fade">
-      {paso>1 && <button className="back" onClick={()=>{setAviso('');setPaso(paso-1);}}>‹ Atrás</button>}
+      <div className="sec-title">Agendar cita</div>
 
-      {/* paso 1: área */}
-      {paso===1 && <>
-        <div className="sec-title">¿Qué área?</div>
-        <div className="areas">
-          {areas.map(a=>(
-            <button key={a.area} className="area-btn" onClick={()=>{setArea(a.area);setPaso(2);}}>
-              <span className="dot" style={{background:a.color}}></span>
-              <span><span className="name">{a.area}</span><br/><span className="sub">{a.staff} staff</span></span>
-              <span className="chev">›</span>
-            </button>
-          ))}
-        </div>
+      <label>Clienta *</label>
+      <input className="inp" value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre de la clienta" />
+      <label>Teléfono</label>
+      <input className="inp" type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="0999999999" />
+
+      <div className="grid2">
+        <div><label>Día</label>
+          <input type="date" className="date-input" value={dia} min={hoy()} onChange={e=>setDia(e.target.value)} /></div>
+        <div><label>Hora</label>
+          <select className="sel" value={hora} onChange={e=>setHora(e.target.value)}>
+            <option value="">{!firstSid?'Elige servicio…':slots===null?'Cargando…':cerrado?'Cerrado 🌙':((slots||[]).length?'Elige hora…':'Sin horarios')}</option>
+            {(slots||[]).map(h=><option key={h} value={h}>{h}</option>)}
+          </select></div>
+      </div>
+
+      <label>Tipo de servicio</label>
+      <div className="seg">
+        {[['normal','Normal'],['mixto','Mixto (2)'],['especial','Especial (+2)'],['promo','Promoción']].map(([k,l])=>
+          <button key={k} className={"seg-b"+(tipo===k?' on':'')} onClick={()=>cambiarTipo(k)}>{l}</button>)}
+      </div>
+
+      {tipo!=='promo' ? <>
+        {filas.map((f,i)=>(
+          <div className="srow" key={i}>
+            <div className="srow-h"><span>Servicio {i+1}</span>{filas.length>1 && <button className="srow-x" onClick={()=>delFila(i)} aria-label="Quitar">×</button>}</div>
+            <select className="sel" value={f.area} onChange={e=>setFila(i,{area:e.target.value,sid:''})}>
+              <option value="">Área…</option>
+              {areas.map(a=><option key={a.area} value={a.area}>{a.area}</option>)}
+            </select>
+            <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setFila(i,{sid:e.target.value})}>
+              <option value="">{f.area?'Especifique…':'Elige área primero'}</option>
+              {servicios.filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio} · {money(s.precio)} · {s.duracion}min</option>)}
+            </select>
+          </div>
+        ))}
+        <button className="addx" onClick={addFila}>+ Agregar servicio Extra</button>
+      </> : <>
+        <select className="sel" value={promoNum} onChange={e=>setPromoNum(e.target.value)}>
+          <option value="">{promos===null?'Cargando…':((promos||[]).length?'No. de promo…':'Sin promos configuradas')}</option>
+          {(promos||[]).map(p=><option key={p.numero} value={p.numero}>#{p.numero} · {p.nombre}</option>)}
+        </select>
+        {promo && <div className="promo-box">
+          <div className="promo-t">Incluye</div>
+          {promo.servicios.map(id=><span key={id} className="promo-chip">{svcPorId[id]?svcPorId[id].servicio:id}</span>)}
+        </div>}
       </>}
 
-      {/* paso 2: servicio */}
-      {paso===2 && <>
-        <div className="sec-title">Servicio · {area}</div>
-        <input className="search" placeholder="Buscar servicio…" value={q} onChange={e=>setQ(e.target.value)} />
-        <div className="list">
-          {filtrados.map(s=>(
-            <button key={s.id} className="svc" onClick={()=>{setSvc(s);setPaso(3);cargarSlots(s.id,fecha);}}>
-              <span className="dot" style={{background:colorArea(s.area)}}></span>
-              <span className="info"><span className="nm">{s.servicio}</span>
-                <span className="meta">{s.duracion} min{s.solapable?' · solapable':''}</span></span>
-              <span className="price">${s.precio}</span>
-            </button>
-          ))}
-          {filtrados.length===0 && <div className="empty">Sin resultados</div>}
-        </div>
-      </>}
-
-      {/* paso 3: fecha + hora */}
-      {paso===3 && svc && <>
-        <div className="sec-title">{svc.servicio}</div>
-        <label>Fecha</label>
-        <input type="date" className="date-input" value={fecha} min={hoy()}
-          onChange={e=>{setFecha(e.target.value);cargarSlots(svc.id,e.target.value);}} />
-        {slots===null ? <div className="spinner"></div> :
-         cerrado ? <div className="empty">Cerrado ese día 🌙</div> :
-         slots.length===0 ? <div className="empty">No hay horarios disponibles</div> :
-         <div className="slots">
-           {slots.map(h=>(
-             <button key={h} className={"slot"+(hora===h?' on':'')}
-               style={hora===h?{background:colorArea(svc.area)}:null}
-               onClick={()=>setHora(h)}>{h}</button>
-           ))}
-         </div>}
-        <button className="btn" disabled={!hora} onClick={()=>setPaso(4)}>Continuar</button>
-      </>}
-
-      {/* paso 4: datos clienta */}
-      {paso===4 && <>
-        <div className="sec-title">Datos de la clienta</div>
-        <div className="card summary" style={{marginBottom:8}}>
-          <div className="row"><span className="k">Servicio</span><span>{svc.servicio}</span></div>
-          <div className="row"><span className="k">Cuándo</span><span>{fechaBonita(fecha)} · {hora}</span></div>
-        </div>
-        <label>Nombre *</label>
-        <input className="inp" value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre de la clienta" />
-        <label>Teléfono</label>
-        <input className="inp" type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="0999999999" />
-        {aviso && <div style={{color:'#A32D2D',fontSize:14,marginTop:12,textAlign:'center'}}>{aviso}</div>}
-        <button className="btn" disabled={enviando} onClick={confirmar}>
-          {enviando?'Reservando…':'Confirmar reserva'}</button>
-      </>}
+      {elegidos.length>0 && <div className="tot-line">{elegidos.length} servicio{elegidos.length>1?'s':''} · {totalDur} min · {money(totalPrecio)}</div>}
+      {aviso && <div className="aviso">{aviso}</div>}
+      <button className="btn" disabled={enviando} onClick={agendar}>{enviando?'Agendando…':'Agendar cita'}</button>
     </div>
   );
 }
