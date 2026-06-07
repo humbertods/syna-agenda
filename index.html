@@ -356,6 +356,30 @@
     background:#ECF6E1;border:1.5px dashed #9CC97A;color:#4C7A1F;font-size:13px;font-weight:600}
   .ag-libre small{font-weight:500;color:#6E9A45}
   .ag-libre-dot{width:9px;height:9px;border-radius:50%;background:#69B021;flex:0 0 auto}
+
+  /* ---- Agenda timeline por columnas ---- */
+  .ag-resumen{font-size:13px;font-weight:600;color:var(--soft);margin:2px 2px 10px}
+  .lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0 2px 12px}
+  .lg-i{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--soft);font-weight:600}
+  .lg-i i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .tl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;background:var(--surface);
+    box-shadow:0 1px 4px rgba(40,30,80,.07);padding-bottom:4px}
+  .tl-inner{position:relative}
+  .tl-hdr{display:flex;border-bottom:1px solid var(--line)}
+  .tl-corner{width:46px;flex:0 0 auto}
+  .tl-chead{width:156px;flex:0 0 auto;text-align:center;font-size:11.5px;font-weight:800;letter-spacing:.4px;
+    color:var(--ink);text-transform:uppercase;padding:9px 4px}
+  .tl-body{display:flex;position:relative}
+  .tl-gutter{width:46px;flex:0 0 auto;position:relative}
+  .tl-hlabel{position:absolute;right:6px;transform:translateY(-50%);font-size:10.5px;color:var(--soft);font-weight:600;white-space:nowrap}
+  .tl-col{width:156px;flex:0 0 auto;position:relative;border-left:1px solid var(--line)}
+  .tl-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.045)}
+  .tl-pill{position:absolute;left:4px;right:4px;border:none;border-radius:9px;padding:4px 7px;text-align:left;cursor:pointer;
+    overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.13);font-family:inherit;display:flex;flex-direction:column;justify-content:center;gap:1px}
+  .tl-pill:active{transform:scale(.985)}
+  .tl-pill-t{font-size:11px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tl-pill-s{font-size:10.5px;font-weight:500;opacity:.85;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tl-hint{font-size:11.5px;color:var(--soft);text-align:center;margin-top:10px}
 </style>
 </head>
 <body>
@@ -778,6 +802,26 @@ function Agenda({servicios,colorArea}){
   const celdas=[]; for(let i=0;i<off;i++)celdas.push(null); for(let d=1;d<=diasMes;d++)celdas.push(d);
   const cambiarMes=delta=>{let m=cur.m+delta,y=cur.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCur({y,m});};
 
+  // ---- timeline por columnas (staff / área) ----
+  const PPM=1.35;
+  const tlH=Math.max(60,(cierra-abre)*PPM);
+  const horas=[]; for(let h=Math.ceil(abre/60); h*60<=cierra; h++) horas.push(h);
+  const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
+  const tipoDe=svc=>{ if(!svc)return 'cejas_short';
+    const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
+    if(g.indexOf('permanente')>=0 || n.indexOf('efecto polvo')>=0) return 'permanente';
+    if(a==='facial') return 'facial';
+    if(a==='pestañas') return 'pestanas';
+    if(a==='depilaciones' || g.indexOf('depila')>=0 || n.indexOf('depila')>=0 || n.indexOf('bikini')>=0 || n.indexOf('axila')>=0) return 'depilacion';
+    return dur>60?'cejas_long':'cejas_short'; };
+  const colDe=svc=>{ const t=tipoDe(svc);
+    return t==='permanente'?'Permanentes': t==='facial'?'Facial': t==='pestanas'?'Pestañas':'Cejas'; };
+  const COLS=['Cejas','Facial','Pestañas','Permanentes'];
+  const COLWASH={Cejas:'#EAF5EE',Facial:'#EAF1FA','Pestañas':'#FAF7E6',Permanentes:'#F6EFF8'};
+  const TIPOCOL={ cejas_long:['#8DCBA6','#1F4D33'], cejas_short:['#C6E6D2','#2C5E40'], depilacion:['#ECC08A','#6E4410'],
+    facial:['#AEC9E8','#234C7A'], pestanas:['#ECE08F','#6E6411'], permanente:['#D8BBE0','#5A3168'] };
+  const LEYENDA=[['cejas_long','Cejas +1h'],['cejas_short','Cejas −1h'],['depilacion','Depil.'],['facial','Facial'],['pestanas','Pestañas'],['permanente','Perm.']];
+
   return (
     <div className="fade">
       <div className="sec-title">Agenda</div>
@@ -802,30 +846,40 @@ function Agenda({servicios,colorArea}){
        mesData===null ? <div className="spinner"></div> :
        cerrado ? <div className="empty" style={{padding:'28px 0'}}>Domingo — no laboramos 🌙</div> :
        <>
-         <div className="ag-metrics">
-           <div className="ag-m"><div className="ag-m-t">Mañana</div><div className="ag-m-n">{mCitas.length}</div><div className="ag-m-v">{money(mVal)}</div></div>
-           <div className="ag-m"><div className="ag-m-t">Tarde</div><div className="ag-m-n">{tCitas.length}</div><div className="ag-m-v">{money(tVal)}</div></div>
-           <div className="ag-m tot"><div className="ag-m-t">Día</div><div className="ag-m-n">{citas.length}</div><div className="ag-m-v">{money(totVal)}</div></div>
+         <div className="ag-resumen">{citas.length} citas · {money(totVal)} · {libresTot} libres</div>
+
+         <div className="lg">
+           {LEYENDA.map(([t,l])=><span key={t} className="lg-i"><i style={{background:TIPOCOL[t][0]}}></i>{l}</span>)}
          </div>
 
-         <div className="occ card">
-           <div className="occ-row"><span className="occ-lbl">Mañana</span><div className="occ-bar"><div className="occ-fill" style={{width:mOcc+'%'}}></div></div><span className="occ-pct">{mOcc}%</span></div>
-           <div className="occ-row"><span className="occ-lbl">Tarde</span><div className="occ-bar"><div className="occ-fill tarde" style={{width:tOcc+'%'}}></div></div><span className="occ-pct">{tOcc}%</span></div>
-           <div className="occ-stats"><span>✨ {premiumCount} premium</span><span>🟢 {libresTot} libres</span><span>{money(totVal)} agendado</span></div>
+         <div className="tl-scroll">
+           <div className="tl-inner" style={{minWidth:46+COLS.length*156}}>
+             <div className="tl-hdr">
+               <div className="tl-corner"></div>
+               {COLS.map(c=><div key={c} className="tl-chead">{c}</div>)}
+             </div>
+             <div className="tl-body" style={{height:tlH}}>
+               <div className="tl-gutter">
+                 {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-abre)*PPM}}>{hLbl(h)}</div>)}
+               </div>
+               {COLS.map(col=>(
+                 <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
+                   {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-abre)*PPM}}></div>)}
+                   {citas.filter(c=>colDe(c.svc)===col).map(c=>{
+                     const cc=TIPOCOL[tipoDe(c.svc)]; const top=(c.ini-abre)*PPM, hgt=Math.max(22,(c.fin-c.ini)*PPM);
+                     return (
+                       <button key={c.id} className="tl-pill" style={{top,height:hgt,background:cc[0],color:cc[1]}} onClick={()=>setReagendar(c)}>
+                         <div className="tl-pill-t">{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
+                         {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
+                       </button>
+                     );
+                   })}
+                 </div>
+               ))}
+             </div>
+           </div>
          </div>
-
-         <div className="ag-filtros">
-           {FILTROS.map(([k,l])=><button key={k} className={"ag-fchip"+(filtro===k?' on':'')} onClick={()=>setFiltro(k)}>{l}</button>)}
-         </div>
-
-         <div className="ag-block">
-           <div className="ag-block-h"><span>MAÑANA</span><span className="ag-block-sub">{hhmm(abre)} – 13:00</span></div>
-           {renderFilas(filas(abre,CORTE))}
-         </div>
-         <div className="ag-block tarde">
-           <div className="ag-block-h"><span>TARDE</span><span className="ag-block-sub">13:00 – {hhmm(cierra)}</span></div>
-           {renderFilas(filas(CORTE,cierra))}
-         </div>
+         <div className="tl-hint">Toca una cita para reagendar · desliza para ver todas las columnas →</div>
        </>}
 
       {reagendar && <ReagendarModal reserva={reagendar} servicios={servicios} colorArea={colorArea}
