@@ -458,6 +458,34 @@
   .perm-form .btn{margin-top:2px}
   .tot-line{font-size:14px;font-weight:700;color:var(--ink);text-align:center;margin:14px 0 2px}
   .aviso{color:#A32D2D;font-size:14px;margin-top:12px;text-align:center}
+  /* ---- Clientas ---- */
+  .cli-search{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--line2);border-radius:12px;
+    font-family:inherit;font-size:15px;color:var(--ink);background:var(--surface);margin-bottom:10px}
+  .cli-search:focus{outline:none;border-color:var(--brand)}
+  .cli-count{font-size:12px;color:var(--soft);margin:2px 2px 10px}
+  .cli-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;
+    font-family:inherit;cursor:pointer}
+  .cli-row-nom{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .cli-row-meta{font-size:12px;color:var(--soft);margin-top:2px}
+  .cli-row-r{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--brand)}
+  .cli-top{font-size:11px;font-weight:800;color:#9A6B00;background:#FFF3D6;border-radius:6px;padding:2px 7px;margin-left:8px}
+  .cli-top.sm{padding:0;background:none;margin-left:4px}
+  .cli-ficha-h{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;
+    box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .cli-ficha-nom{font-size:20px;font-weight:800;color:var(--ink);display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+  .cli-ficha-meta{font-size:13px;color:var(--soft);margin-top:3px}
+  .cli-stats{display:flex;gap:16px;margin-top:10px;font-size:13px;color:var(--ink)}
+  .cli-stats b{color:var(--brand);font-size:15px}
+  .cli-box{background:var(--panel);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .cli-box-t{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--soft);margin-bottom:6px}
+  .cli-obs{font-size:13.5px;color:var(--ink);line-height:1.5}
+  .cli-sec{font-size:13px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--soft);margin:16px 2px 9px}
+  .cli-visita{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+  .cli-v-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .cli-v-srv{font-size:14.5px;font-weight:700;color:var(--ink)}
+  .cli-v-tot{font-size:14px;font-weight:800;color:var(--brand);flex:0 0 auto}
+  .cli-v-meta{font-size:12.5px;color:var(--soft);margin-top:3px;line-height:1.45}
   /* ---- Recepción ---- */
   .rec-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:11px;
     box-shadow:0 1px 4px rgba(40,30,80,.06)}
@@ -577,6 +605,7 @@ function App(){
               <div className="menu-sep"></div>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}>🔒 Permisos y bloqueos</button>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}>👥 Recepción · asignar staff</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('clientas');}}>👤 Clientas</button>
               <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
             </div>
@@ -593,6 +622,7 @@ function App(){
             (tab==='asistente' && asistenteOn) ? <Asistente/> :
             tab==='permisos'    ? <Permisos go={go}/> :
             tab==='recepcion'   ? <Recepcion go={go} servicios={servicios}/> :
+            tab==='clientas'    ? <Clientas go={go}/> :
             tab==='seguimiento' ? <Seguimiento/> :
             tab==='fidelidad'   ? <Fidelidad/> :
             <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
@@ -881,6 +911,115 @@ function Recepcion({go, servicios}){
            </div>
          );
        })}
+    </div>
+  );
+}
+
+/* ---------- Clientas · directorio + ficha + historial (NexServ) ---------- */
+function Clientas({go}){
+  const [lista,setLista]=useState(null);
+  const [q,setQ]=useState('');
+  const [sel,setSel]=useState(null);      // clienta seleccionada (objeto)
+  const [hist,setHist]=useState(null);    // getHistorial result
+  const [cargandoH,setCargandoH]=useState(false);
+
+  useEffect(()=>{ (async()=>{
+    try{ const r=await apiGet('getClientes'); setLista(r.ok?(r.clientes||[]):[]); }
+    catch(e){ setLista([]); }
+  })(); },[]);
+
+  const abrir=async(c)=>{
+    setSel(c); setHist(null); setCargandoH(true);
+    try{ const r=await apiGet('getHistorial',{codigo:c.codigo}); setHist(r.ok?r:{visitas:[],fichas:{facial:[],pestanas:[]}}); }
+    catch(e){ setHist({visitas:[],fichas:{facial:[],pestanas:[]}}); }
+    setCargandoH(false);
+  };
+
+  const norm=s=>String(s||'').toLowerCase();
+  const money=n=>'$'+Math.round(n||0);
+  const filtradas=(lista||[]).filter(c=>{
+    if(!q) return true; const t=norm(q);
+    return norm(c.nombre).indexOf(t)>=0 || norm(c.codigo).indexOf(t)>=0 || norm(c.telefono).indexOf(t)>=0;
+  });
+
+  // ----- Ficha de una clienta -----
+  if (sel){
+    const obs=[['General',sel.observaciones],['Cejas',sel.obs_cejas],['Depilación',sel.obs_depilacion],['Pestañas',sel.obs_pestanas],['Facial',sel.obs_facial]].filter(x=>s(x[1]));
+    const v=hist&&hist.visitas?hist.visitas:[];
+    const fFac=hist&&hist.fichas?hist.fichas.facial:[];
+    const fPes=hist&&hist.fichas?hist.fichas.pestanas:[];
+    return (
+      <div className="fade">
+        <button className="back" onClick={()=>{setSel(null);setHist(null);}}>‹ Volver a clientas</button>
+        <div className="cli-ficha-h">
+          <div className="cli-ficha-nom">{sel.nombre}{sel.top&&<span className="cli-top">⭐ TOP</span>}</div>
+          <div className="cli-ficha-meta">{sel.codigo}{sel.telefono?(' · '+sel.telefono):''}</div>
+          {sel.correo?<div className="cli-ficha-meta">{sel.correo}</div>:null}
+          <div className="cli-stats">
+            <span><b>{sel.total_visitas}</b> visitas</span>
+            {sel.ultima_visita?<span>última: {fechaCorta(sel.ultima_visita)}</span>:null}
+          </div>
+        </div>
+
+        {obs.length>0 && <div className="cli-box">
+          <div className="cli-box-t">Observaciones</div>
+          {obs.map(([k,val])=><div key={k} className="cli-obs"><b>{k}:</b> {val}</div>)}
+        </div>}
+
+        <div className="cli-sec">Historial de visitas</div>
+        {cargandoH ? <div className="spinner"></div> :
+         v.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Sin visitas registradas.</div> :
+         v.map((x,i)=>(
+           <div key={i} className="cli-visita">
+             <div className="cli-v-top"><span className="cli-v-srv">{x.servicio||'—'}</span><span className="cli-v-tot">{x.total?money(x.total):''}</span></div>
+             <div className="cli-v-meta">{x.fecha?fechaCorta(x.fecha):''}{x.staff?(' · '+x.staff):''}{x.area?(' · '+x.area):''}{x.metodo?(' · '+x.metodo):''}</div>
+           </div>
+         ))}
+
+        {fFac.length>0 && <>
+          <div className="cli-sec">Fichas faciales</div>
+          {fFac.map((f,i)=>(
+            <div key={i} className="cli-visita">
+              <div className="cli-v-top"><span className="cli-v-srv">{f.servicio||'Facial'}</span><span className="cli-v-meta">{f.fecha?fechaCorta(f.fecha):''}</span></div>
+              {f.procedimiento?<div className="cli-v-meta"><b>Proc:</b> {f.procedimiento}</div>:null}
+              {f.productos?<div className="cli-v-meta"><b>Productos:</b> {f.productos}</div>:null}
+              {f.observaciones?<div className="cli-v-meta"><b>Obs:</b> {f.observaciones}</div>:null}
+            </div>
+          ))}
+        </>}
+
+        {fPes.length>0 && <>
+          <div className="cli-sec">Fichas de pestañas</div>
+          {fPes.map((f,i)=>(
+            <div key={i} className="cli-visita">
+              <div className="cli-v-top"><span className="cli-v-srv">{f.estilo||'Pestañas'}{f.curvatura?(' · '+f.curvatura):''}</span><span className="cli-v-meta">{f.fecha?fechaCorta(f.fecha):''}</span></div>
+              {f.observacion?<div className="cli-v-meta">{f.observacion}</div>:null}
+            </div>
+          ))}
+        </>}
+      </div>
+    );
+  }
+
+  // ----- Directorio -----
+  return (
+    <div className="fade">
+      <div className="sec-title">Clientas</div>
+      <input className="cli-search" placeholder="Buscar por nombre, código o teléfono…" value={q} onChange={e=>setQ(e.target.value)} />
+      {lista===null ? <div className="spinner"></div> :
+       <>
+         <div className="cli-count">{filtradas.length} de {lista.length} clientas</div>
+         {filtradas.slice(0,200).map(c=>(
+           <button key={c.codigo} className="cli-row" onClick={()=>abrir(c)}>
+             <div className="cli-row-l">
+               <div className="cli-row-nom">{c.nombre||'—'}{c.top&&<span className="cli-top sm">⭐</span>}</div>
+               <div className="cli-row-meta">{c.codigo}{c.telefono?(' · '+c.telefono):''}</div>
+             </div>
+             <div className="cli-row-r">{c.total_visitas?(c.total_visitas+' ✦'):''}</div>
+           </button>
+         ))}
+         {filtradas.length>200 && <div className="cli-count">Mostrando 200 — afina la búsqueda para ver más.</div>}
+       </>}
     </div>
   );
 }
