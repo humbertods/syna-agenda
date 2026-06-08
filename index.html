@@ -532,6 +532,25 @@
   .rec-asig{display:flex;align-items:center;gap:10px;margin-top:11px}
   .rec-lbl{font-size:12px;font-weight:700;color:var(--soft);flex:0 0 auto}
   .rec-asig .sel{flex:1;margin:0}
+  /* ---- Recepción ticket ---- */
+  .rec-meta{font-size:12.5px;font-weight:700;color:var(--soft)}
+  .rec-prio{flex:0 0 auto;font-size:11px;font-weight:800;color:#1E7A34;background:#E3F5E8;border-radius:20px;padding:4px 11px}
+  .rec-svlbl{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--soft);margin:11px 0 7px}
+  .rec-sv{display:flex;gap:7px;align-items:center;margin-bottom:7px}
+  .rec-sv .sel{flex:1;margin:0}
+  .rec-svx{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);
+    color:#A32D2D;font-size:18px;line-height:1;cursor:pointer}
+  .rec-addsv{width:100%;padding:9px;border-radius:10px;border:1px dashed var(--brand);background:none;color:var(--brand);
+    font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px}
+  .rec-btns{display:flex;gap:9px}
+  .rec-b{flex:1;padding:13px 8px;border-radius:12px;border:none;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  .rec-b.ok{background:var(--brand);color:#fff}
+  .rec-b.can{background:#FBEAEA;color:#A32D2D}
+  .rec-b:disabled{opacity:.55}
+  .rec-card.done{border-color:#1E7A34;background:#F2FBF4}
+  .rec-card.cancd{border-color:#E0B4B4;background:#FCF3F3}
+  .rec-hecho{font-size:13.5px;font-weight:700;color:#1E7A34;margin-top:4px}
+  .rec-hecho.can{color:#A32D2D}
   .pcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 1px 5px rgba(40,30,80,.06)}
   .pcard-h{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:var(--brand);
     text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
@@ -636,7 +655,7 @@ function App(){
               </div>
               <div className="menu-sep"></div>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}>🔒 Permisos y bloqueos</button>
-              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}>👥 Recepción · asignar staff</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}>👥 Recepción · tickets</button>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('clientas');}}>👤 Clientas</button>
               <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
@@ -934,57 +953,92 @@ function Permisos({go}){
 
 /* ---------- Recepción · Mikaela asigna staff cuando llega la clienta ---------- */
 function Recepcion({go, servicios}){
-  const [staff,setStaff]=useState([]);
-  const [citas,setCitas]=useState(null);
+  const [tickets,setTickets]=useState(null);
+  const [edits,setEdits]=useState({});      // key -> [{area,sid}]
+  const [estadoT,setEstadoT]=useState({});  // key -> 'busy'|'confirmado'|'cancelado'
   const [,setTick]=useState(0);
   const dia=hoy();
   const svcPorId={}; (servicios||[]).forEach(x=>{svcPorId[x.id]=x;});
+  const areasUnicas=[...new Set((servicios||[]).map(s=>s.area).filter(Boolean))];
+
   const cargar=async()=>{
-    try{ const [st,r]=await Promise.all([apiGet('getStaff'),apiGet('getReservas',{fecha:dia})]);
-      setStaff(st.ok?st.staff:[]);
-      const list=(r.ok?r.reservas:[]).filter(c=>{const e=(c.estado||'').toLowerCase();return e!=='cancelada'&&e!=='no_show';})
-        .sort((a,b)=>String(a.hora_inicio||'').localeCompare(String(b.hora_inicio||'')));
-      setCitas(list);
-    }catch(e){ setCitas([]); }
+    try{ const r=await apiGet('getReservas',{fecha:dia});
+      const list=(r.ok?r.reservas:[]).filter(c=>{const e=(c.estado||'').toLowerCase();return e!=='cancelada'&&e!=='no_show';});
+      const map={};
+      list.forEach(c=>{ const m=String(c.notas||'').match(/combo\s+(\S+)/i); const key=m?m[1]:c.id;
+        if(!map[key]) map[key]={key,cliente_id:c.cliente_id,cliente_nombre:c.cliente_nombre,hora:c.hora_inicio,rows:[]};
+        map[key].rows.push(c);
+        if(String(c.hora_inicio||'')<String(map[key].hora||'')) map[key].hora=c.hora_inicio;
+      });
+      const ts=Object.values(map).sort((a,b)=>String(a.hora||'').localeCompare(String(b.hora||'')));
+      setTickets(ts);
+      setEdits(prev=>{ const e={...prev}; ts.forEach(t=>{ if(!e[t.key]) e[t.key]=t.rows.map(r=>({area:r.area,sid:r.servicio_id})); }); return e; });
+    }catch(e){ setTickets([]); }
   };
   useEffect(()=>{cargar()},[]);
   useEffect(()=>{ const t=setInterval(()=>setTick(x=>x+1),60000); return ()=>clearInterval(t); },[]);
+
   const pmin=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
   const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
-  const activo=v=>{ const x=String(v).toLowerCase(); return v===undefined||v===''||x==='true'||x==='1'||x==='si'||x==='sí'||x==='activo'; };
-  const staffArea=area=>staff.filter(s=>String(s.area)===String(area) && activo(s.activo));
-  const asignar=async(id,staffId)=>{
-    setCitas(cs=>cs.map(c=>c.id===id?{...c,staff_asignado:staffId}:c));
-    try{ await apiPost('actualizarCita',{id,staff_asignado:staffId}); }catch(e){}
+  const esCodigo=v=>/^C-?\d+/i.test(String(v||''));
+  const setSvc=(key,i,patch)=>setEdits(e=>({...e,[key]:e[key].map((f,j)=>j===i?{...f,...patch}:f)}));
+  const addSvc=key=>setEdits(e=>({...e,[key]:[...(e[key]||[]),{area:'',sid:''}]}));
+  const delSvc=(key,i)=>setEdits(e=>({...e,[key]:e[key].filter((_,j)=>j!==i)}));
+
+  const confirmar=async(t)=>{
+    setEstadoT(s=>({...s,[t.key]:'busy'}));
+    try{
+      await Promise.all(t.rows.map(r=>apiPost('actualizarCita',{id:r.id,estado:'confirmada'})));
+      // PENDIENTE: enviar a la lista de espera de NexServ (con edits[t.key]) usando la función de NexServ.
+      setEstadoT(s=>({...s,[t.key]:'confirmado'}));
+    }catch(e){ setEstadoT(s=>({...s,[t.key]:''})); }
+  };
+  const cancelar=async(t)=>{
+    setEstadoT(s=>({...s,[t.key]:'busy'}));
+    try{ await Promise.all(t.rows.map(r=>apiPost('cancelarReserva',{id:r.id})));
+      setEstadoT(s=>({...s,[t.key]:'cancelado'})); }
+    catch(e){ setEstadoT(s=>({...s,[t.key]:''})); }
   };
 
   return (
     <div className="fade">
       <button className="back" onClick={()=>go('principal')}>‹ Volver</button>
-      <div className="sec-title">Recepción de hoy</div>
-      <div className="perm-intro">Cuando llega la clienta, elige quién la atiende. Las citas salen en orden de hora y la de la hora actual se resalta. 💜</div>
-      {citas===null ? <div className="spinner"></div> :
-       citas.length===0 ? <div className="empty" style={{padding:'24px 0'}}>No hay citas para hoy 🌿</div> :
-       citas.map(c=>{
-         const ini=pmin(c.hora_inicio), fin=pmin(c.hora_fin), n=nowMin();
-         const llegando = ini!=null && n>=ini-15 && n<(fin!=null?fin:ini+30);
-         const sa=String(c.staff_asignado||'');
-         const sinAsignar = !sa || sa==='por asignar';
-         const svc=svcPorId[c.servicio_id];
+      <div className="sec-title">Recepción · tickets de hoy</div>
+      <div className="perm-intro">Cuando llega la clienta, reconfirma sus servicios y dale <b>Confirmar llegada</b> para pasarla a la lista de espera. Si no vino, <b>Cancelar ticket</b>. 💜</div>
+      {tickets===null ? <div className="spinner"></div> :
+       tickets.length===0 ? <div className="empty" style={{padding:'24px 0'}}>No hay tickets para hoy 🌿</div> :
+       tickets.map(t=>{
+         const ini=pmin(t.hora), n=nowMin();
+         const llegando = ini!=null && n>=ini-15 && n<ini+60;
+         const est=estadoT[t.key]||'';
+         const svs=edits[t.key]||[];
+         if(est==='confirmado') return <div key={t.key} className="rec-card done"><div className="rec-cli">{t.cliente_nombre}</div><div className="rec-hecho">✓ Confirmada · pasa a lista de espera</div></div>;
+         if(est==='cancelado') return <div key={t.key} className="rec-card cancd"><div className="rec-cli">{t.cliente_nombre}</div><div className="rec-hecho can">✕ Ticket cancelado</div></div>;
          return (
-           <div key={c.id} className={"rec-card"+(llegando?' now':'')+(sinAsignar?' sin':'')}>
+           <div key={t.key} className={"rec-card"+(llegando?' now':'')}>
              <div className="rec-top">
-               <span className="rec-hora">{c.hora_inicio}{llegando&&<b className="rec-now">· ahora</b>}</span>
-               <span className="rec-area">{c.area}</span>
+               <span className="rec-meta">{esCodigo(t.cliente_id)?(t.cliente_id+' · '):''}cita {t.hora}{llegando&&<b className="rec-now"> · es la hora</b>}</span>
+               <span className="rec-prio">Normal</span>
              </div>
-             <div className="rec-cli">{c.cliente_nombre||'—'}</div>
-             <div className="rec-srv">{svc?svc.servicio:c.servicio_id}</div>
-             <div className="rec-asig">
-               <span className="rec-lbl">Atiende</span>
-               <select className="sel" value={sinAsignar?'':sa} onChange={e=>asignar(c.id, e.target.value||'por asignar')}>
-                 <option value="">Por asignar…</option>
-                 {staffArea(c.area).map(st=><option key={st.id} value={st.id}>{st.nombre||st.id}</option>)}
-               </select>
+             <div className="rec-cli">{t.cliente_nombre||'—'}</div>
+             <div className="rec-svlbl">Servicios (reconfirma si cambió)</div>
+             {svs.map((f,i)=>(
+               <div className="rec-sv" key={i}>
+                 <select className="sel" value={f.area} onChange={e=>setSvc(t.key,i,{area:e.target.value,sid:''})}>
+                   <option value="">Área…</option>
+                   {areasUnicas.map(a=><option key={a} value={a}>{a}</option>)}
+                 </select>
+                 <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setSvc(t.key,i,{sid:e.target.value})}>
+                   <option value="">{f.area?'Servicio…':'Elige área'}</option>
+                   {(servicios||[]).filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio}</option>)}
+                 </select>
+                 {svs.length>1 && <button className="rec-svx" onClick={()=>delSvc(t.key,i)} aria-label="Quitar">×</button>}
+               </div>
+             ))}
+             <button className="rec-addsv" onClick={()=>addSvc(t.key)}>+ Agregar servicio</button>
+             <div className="rec-btns">
+               <button className="rec-b ok" disabled={est==='busy'} onClick={()=>confirmar(t)}>{est==='busy'?'…':'✓ Confirmar llegada'}</button>
+               <button className="rec-b can" disabled={est==='busy'} onClick={()=>cancelar(t)}>✕ Cancelar ticket</button>
              </div>
            </div>
          );
