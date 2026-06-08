@@ -589,6 +589,9 @@
     text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
   .pcard .srow{background:var(--panel)}
   .pcard .inp{margin-bottom:8px}
+  .nf-l{display:block;font-size:11.5px;font-weight:700;color:var(--soft);margin:2px 0 5px}
+  .nf-opt{font-weight:500;color:var(--line2)}
+  .nf-hint{font-size:11.5px;color:var(--soft);margin:2px 0 4px;line-height:1.4}
   .addp{width:100%;background:none;border:1.5px dashed var(--brand);color:var(--brand);border-radius:14px;padding:13px;
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;margin-bottom:8px}
   .addp:active{background:rgba(91,59,196,.06)}
@@ -777,7 +780,7 @@ function Previsualizacion({dia, servicio, onClose, onConfirm}){
 
 function Reservar({areas,servicios,colorArea}){
   const MAXSERV=5;
-  const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',tel:'',filas:[{area:'',sid:''}]});
+  const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',apellido:'',cedula:'',correo:'',tel:'',filas:[{area:'',sid:''}]});
   const [dia,setDia]=useState(hoy());
   const [hora,setHora]=useState('');
   const [personas,setPersonas]=useState([nuevaPersona()]);
@@ -826,7 +829,8 @@ function Reservar({areas,servicios,colorArea}){
       const items=[];
       for(const f of p.filas){ if(!f.sid)continue; items.push(f.area==='__promo__'?{k:'p',num:f.sid}:{k:'s',id:f.sid}); }
       if(!items.length) return setAviso('Elige al menos un servicio en la persona '+(i+1));
-      payload.push({cliente_id:p.cliente_id||'',cliente_nombre:(p.nombre||'').trim(),telefono:(p.tel||'').trim(),items});
+      const nomFull=p.modo==='nueva' ? ((p.nombre||'').trim()+' '+(p.apellido||'').trim()).trim() : (p.nombre||'').trim();
+      payload.push({cliente_id:p.cliente_id||'',cliente_nombre:nomFull,telefono:(p.tel||'').trim(),cedula:(p.cedula||'').trim(),correo:(p.correo||'').trim(),items});
     }
     setEnviando(true); setAviso('');
     try{ const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
@@ -876,8 +880,17 @@ function Reservar({areas,servicios,colorArea}){
             <button className={"cli-tg"+(p.modo==='nueva'?' on':'')} onClick={()=>setPer(pi,{modo:'nueva',cliente_id:'',_cli:null,hist:null})}>+ Clienta Nueva</button>
           </div>
           {p.modo==='nueva' ? <>
-            <input className="inp" placeholder="Nombre de la clienta" value={p.nombre} onChange={e=>setPer(pi,{nombre:e.target.value})} />
-            <input className="inp" type="tel" placeholder="Teléfono (opcional)" value={p.tel} onChange={e=>setPer(pi,{tel:e.target.value})} />
+            <label className="nf-l">Nombre</label>
+            <input className="inp" placeholder="María Fernanda" value={p.nombre} onChange={e=>setPer(pi,{nombre:e.target.value})} />
+            <label className="nf-l">Apellido</label>
+            <input className="inp" placeholder="López Reyes" value={p.apellido||''} onChange={e=>setPer(pi,{apellido:e.target.value})} />
+            <label className="nf-l">Cédula / RUC <span className="nf-opt">(opcional)</span></label>
+            <input className="inp" placeholder="0912345678" value={p.cedula||''} onChange={e=>setPer(pi,{cedula:e.target.value})} />
+            <label className="nf-l">Teléfono <span className="nf-opt">(opcional)</span></label>
+            <input className="inp" type="tel" placeholder="0999123456" value={p.tel} onChange={e=>setPer(pi,{tel:e.target.value})} />
+            <label className="nf-l">Correo electrónico <span className="nf-opt">(opcional)</span></label>
+            <input className="inp" type="email" placeholder="maria@email.com" value={p.correo||''} onChange={e=>setPer(pi,{correo:e.target.value})} />
+            <div className="nf-hint">Se registrará en NexServ con su código al agendar.</div>
           </> : (!p.cliente_id ? <div className="cli-pick">
             <input className="inp" placeholder={clientas===null?'Cargando clientas…':'Buscar por nombre, código o teléfono…'} value={p.q||''} onChange={e=>setPer(pi,{q:e.target.value})} />
             {(p.q||'').trim().length>=2 && <div className="cli-results">
