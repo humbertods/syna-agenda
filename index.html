@@ -99,6 +99,24 @@
     background:var(--surface);box-shadow:var(--shadow);margin-top:10px}
   .resv .time{font-weight:600;font-size:15px;white-space:nowrap}
   .resv .time small{display:block;font-weight:400;color:var(--soft);font-size:12px}
+  /* Tarjetas con acción (dashboard) */
+  .resv-wrap{display:flex;align-items:stretch;gap:0;margin-top:10px}
+  .resv-wrap .resv{flex:1;margin-top:0;cursor:pointer;transition:transform .18s ease}
+  .resv-wrap .resv.shift{transform:translateX(-6px)}
+  .resv-acts{display:flex;align-items:center;gap:8px;max-width:0;opacity:0;overflow:hidden;
+    transition:max-width .22s ease,opacity .22s ease,margin .22s ease}
+  .resv-acts.show{max-width:130px;opacity:1;margin-left:10px}
+  .ra{width:42px;height:42px;border-radius:50%;border:1.5px solid;background:var(--surface);
+    font-size:19px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .ra.ok{color:#1E7A34;border-color:#9FD8AE}
+  .ra.ok:active{background:#EAF7EE}
+  .ra.can{color:#C0392B;border-color:#E9B3AC}
+  .ra.can:active{background:#FBEAE7}
+  .ra-load{font-size:20px;color:var(--soft);padding:0 12px}
+  .done-card{margin-top:10px;align-items:center}
+  .dc-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex:0 0 auto}
+  .dc-ic.ok{color:#1E7A34;background:#EAF7EE}
+  .dc-ic.can{color:#C0392B;background:#FBEAE7}
   .resv .who{font-size:16px;font-weight:500}
   .resv .what{font-size:13px;color:var(--soft);margin-top:1px}
   .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
@@ -1691,23 +1709,53 @@ function MenuFlotante({tab,go,onRefresh,refreshing}){
 function Principal({rol,nombre,colorArea,go,asistenteOn}){
   const [d,setD]=useState(null);
   const [err,setErr]=useState('');
-  useEffect(()=>{(async()=>{
-    try{ const r=await apiGet('getResumen'); if(r&&r.ok) setD(r); else setErr('No se pudo cargar el resumen.'); }
+  const [openCard,setOpenCard]=useState('');
+  const [actState,setActState]=useState({});   // key -> 'busy'|'done'|'cancelled'
+  const cargar=async()=>{
+    try{ const r=await apiGet('getResumen'); if(r&&r.ok){setD(r);setErr('');} else setErr('No se pudo cargar el resumen.'); }
     catch(e){ setErr('Error de conexión.'); }
-  })()},[]);
+  };
+  useEffect(()=>{cargar()},[]);
+  const accionCita=async(p,tipo)=>{
+    const key=p.grupo||(p.ids&&p.ids[0])||p.cliente;
+    setActState(s=>({...s,[key]:'busy'}));
+    try{
+      const action=tipo==='llego'?'confirmarLlegadaCita':tipo==='cancelar'?'cancelarCitaNex':'atendidaCita';
+      await apiPost(action,{ids:p.ids||[],nex:p.nex||''});
+      setActState(s=>({...s,[key]:tipo==='cancelar'?'cancelled':'done'}));
+      setTimeout(cargar,1200);
+    }catch(e){ setActState(s=>({...s,[key]:''})); }
+  };
   const esCEO = (rol||'').toLowerCase()==='admin';
   if(err) return <div className="empty">{err}</div>;
   if(!d) return <div className="spinner"></div>;
-  const fila = (p,i,live) => (
-    <div key={i} className={"resv"+(live?' enproc':'')} style={{borderLeftColor:colorArea(p.area)}}>
-      <div className="time">{p.hora_inicio}<small>{p.hora_fin}</small></div>
-      <div style={{flex:1,minWidth:0}}>
-        <div className="who">{p.cliente}</div>
-        <div className="what">{p.servicio} · {p.area}{p.staff?(' · '+p.staff):''}</div>
+  const fila = (p,i,live) => {
+    const key=p.grupo||(p.ids&&p.ids[0])||(p.cliente+i);
+    const st=actState[key]||'';
+    const open=openCard===key;
+    if(st==='done') return <div key={key} className="resv done-card"><span className="dc-ic ok">✓</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">{live?'Ya fue atendida':'Llegada confirmada'}</div></div></div>;
+    if(st==='cancelled') return <div key={key} className="resv done-card"><span className="dc-ic can">⊘</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">Cita cancelada</div></div></div>;
+    return (
+      <div key={key} className="resv-wrap">
+        <div className={"resv"+(live?' enproc':'')+(open?' shift':'')} style={{borderLeftColor:colorArea(p.area)}} onClick={()=>setOpenCard(open?'':key)}>
+          <div className="time">{p.hora_inicio}<small>{p.hora_fin}</small></div>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="who">{p.cliente}</div>
+            <div className="what">{p.servicio} · {p.area}{p.staff?(' · '+p.staff):''}</div>
+          </div>
+          {live && !open && <span className="live">●</span>}
+        </div>
+        <div className={"resv-acts"+(open?' show':'')}>
+          {st==='busy' ? <span className="ra-load">…</span> : live
+            ? <button className="ra ok" title="Ya fue atendida" onClick={()=>accionCita(p,'atendida')}>✓</button>
+            : <>
+                <button className="ra can" title="Cancelar cita" onClick={()=>accionCita(p,'cancelar')}>⊘</button>
+                <button className="ra ok" title="Ya llegó a su cita" onClick={()=>accionCita(p,'llego')}>✓</button>
+              </>}
+        </div>
       </div>
-      {live && <span className="live">●</span>}
-    </div>
-  );
+    );
+  };
   return (
     <div className="fade">
       <div className="sec-title">Hola{nombre?(', '+nombre.split(' ')[0]):''} 👋</div>
