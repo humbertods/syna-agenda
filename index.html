@@ -458,6 +458,20 @@
   .perm-form .btn{margin-top:2px}
   .tot-line{font-size:14px;font-weight:700;color:var(--ink);text-align:center;margin:14px 0 2px}
   .aviso{color:#A32D2D;font-size:14px;margin-top:12px;text-align:center}
+  /* ---- Recepción ---- */
+  .rec-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:11px;
+    box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .rec-card.now{border-color:var(--brand);box-shadow:0 0 0 2px rgba(91,59,196,.16),0 2px 8px rgba(91,59,196,.14)}
+  .rec-card.sin{border-left:4px solid #E0A82E}
+  .rec-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+  .rec-hora{font-size:15px;font-weight:800;color:var(--ink)}
+  .rec-now{color:var(--brand);font-size:12px;font-weight:800;margin-left:5px}
+  .rec-area{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--soft)}
+  .rec-cli{font-size:16px;font-weight:700;color:var(--ink);line-height:1.2}
+  .rec-srv{font-size:13.5px;color:var(--soft);margin-top:1px}
+  .rec-asig{display:flex;align-items:center;gap:10px;margin-top:11px}
+  .rec-lbl{font-size:12px;font-weight:700;color:var(--soft);flex:0 0 auto}
+  .rec-asig .sel{flex:1;margin:0}
   .pcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 1px 5px rgba(40,30,80,.06)}
   .pcard-h{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:var(--brand);
     text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
@@ -562,6 +576,7 @@ function App(){
               </div>
               <div className="menu-sep"></div>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}>🔒 Permisos y bloqueos</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}>👥 Recepción · asignar staff</button>
               <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
             </div>
@@ -577,6 +592,7 @@ function App(){
             tab==='reservar'    ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/> :
             (tab==='asistente' && asistenteOn) ? <Asistente/> :
             tab==='permisos'    ? <Permisos go={go}/> :
+            tab==='recepcion'   ? <Recepcion go={go} servicios={servicios}/> :
             tab==='seguimiento' ? <Seguimiento/> :
             tab==='fidelidad'   ? <Fidelidad/> :
             <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
@@ -804,6 +820,67 @@ function Permisos({go}){
            ))}
          </div>
        ))}
+    </div>
+  );
+}
+
+/* ---------- Recepción · Mikaela asigna staff cuando llega la clienta ---------- */
+function Recepcion({go, servicios}){
+  const [staff,setStaff]=useState([]);
+  const [citas,setCitas]=useState(null);
+  const [,setTick]=useState(0);
+  const dia=hoy();
+  const svcPorId={}; (servicios||[]).forEach(x=>{svcPorId[x.id]=x;});
+  const cargar=async()=>{
+    try{ const [st,r]=await Promise.all([apiGet('getStaff'),apiGet('getReservas',{fecha:dia})]);
+      setStaff(st.ok?st.staff:[]);
+      const list=(r.ok?r.reservas:[]).filter(c=>{const e=(c.estado||'').toLowerCase();return e!=='cancelada'&&e!=='no_show';})
+        .sort((a,b)=>String(a.hora_inicio||'').localeCompare(String(b.hora_inicio||'')));
+      setCitas(list);
+    }catch(e){ setCitas([]); }
+  };
+  useEffect(()=>{cargar()},[]);
+  useEffect(()=>{ const t=setInterval(()=>setTick(x=>x+1),60000); return ()=>clearInterval(t); },[]);
+  const pmin=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
+  const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+  const activo=v=>{ const x=String(v).toLowerCase(); return v===undefined||v===''||x==='true'||x==='1'||x==='si'||x==='sí'||x==='activo'; };
+  const staffArea=area=>staff.filter(s=>String(s.area)===String(area) && activo(s.activo));
+  const asignar=async(id,staffId)=>{
+    setCitas(cs=>cs.map(c=>c.id===id?{...c,staff_asignado:staffId}:c));
+    try{ await apiPost('actualizarCita',{id,staff_asignado:staffId}); }catch(e){}
+  };
+
+  return (
+    <div className="fade">
+      <button className="back" onClick={()=>go('principal')}>‹ Volver</button>
+      <div className="sec-title">Recepción de hoy</div>
+      <div className="perm-intro">Cuando llega la clienta, elige quién la atiende. Las citas salen en orden de hora y la de la hora actual se resalta. 💜</div>
+      {citas===null ? <div className="spinner"></div> :
+       citas.length===0 ? <div className="empty" style={{padding:'24px 0'}}>No hay citas para hoy 🌿</div> :
+       citas.map(c=>{
+         const ini=pmin(c.hora_inicio), fin=pmin(c.hora_fin), n=nowMin();
+         const llegando = ini!=null && n>=ini-15 && n<(fin!=null?fin:ini+30);
+         const sa=String(c.staff_asignado||'');
+         const sinAsignar = !sa || sa==='por asignar';
+         const svc=svcPorId[c.servicio_id];
+         return (
+           <div key={c.id} className={"rec-card"+(llegando?' now':'')+(sinAsignar?' sin':'')}>
+             <div className="rec-top">
+               <span className="rec-hora">{c.hora_inicio}{llegando&&<b className="rec-now">· ahora</b>}</span>
+               <span className="rec-area">{c.area}</span>
+             </div>
+             <div className="rec-cli">{c.cliente_nombre||'—'}</div>
+             <div className="rec-srv">{svc?svc.servicio:c.servicio_id}</div>
+             <div className="rec-asig">
+               <span className="rec-lbl">Atiende</span>
+               <select className="sel" value={sinAsignar?'':sa} onChange={e=>asignar(c.id, e.target.value||'por asignar')}>
+                 <option value="">Por asignar…</option>
+                 {staffArea(c.area).map(st=><option key={st.id} value={st.id}>{st.nombre||st.id}</option>)}
+               </select>
+             </div>
+           </div>
+         );
+       })}
     </div>
   );
 }
