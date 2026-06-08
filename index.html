@@ -432,6 +432,15 @@
   .perm-form .btn{margin-top:2px}
   .tot-line{font-size:14px;font-weight:700;color:var(--ink);text-align:center;margin:14px 0 2px}
   .aviso{color:#A32D2D;font-size:14px;margin-top:12px;text-align:center}
+  .pcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:0 1px 5px rgba(40,30,80,.06)}
+  .pcard-h{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:var(--brand);
+    text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+  .pcard .srow{background:var(--panel)}
+  .pcard .inp{margin-bottom:8px}
+  .addp{width:100%;background:none;border:1.5px dashed var(--brand);color:var(--brand);border-radius:14px;padding:13px;
+    font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;margin-bottom:8px}
+  .addp:active{background:rgba(91,59,196,.06)}
+  .cap-note{font-size:12px;color:var(--soft);text-align:center;padding:8px;background:var(--panel);border-radius:10px;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -552,72 +561,76 @@ function App(){
   );
 }
 
-/* ---------- Flujo de reservar (multi-servicio) ---------- */
+/* ---------- Flujo de reservar (multi-persona) ---------- */
 function Reservar({areas,servicios,colorArea}){
-  const [nombre,setNombre]=useState('');
-  const [tel,setTel]=useState('');
+  const MAXSERV=5;
+  const nuevaPersona=()=>({nombre:'',tel:'',tipo:'normal',filas:[{area:'',sid:''}],promoNum:''});
   const [dia,setDia]=useState(hoy());
   const [hora,setHora]=useState('');
-  const [tipo,setTipo]=useState('normal');
-  const [filas,setFilas]=useState([{area:'',sid:''}]);
+  const [personas,setPersonas]=useState([nuevaPersona()]);
   const [promos,setPromos]=useState(null);
-  const [promoNum,setPromoNum]=useState('');
-  const [slots,setSlots]=useState(null);
-  const [cerrado,setCerrado]=useState(false);
-  const [notaHora,setNotaHora]=useState('');
   const [enviando,setEnviando]=useState(false);
   const [aviso,setAviso]=useState('');
   const [hecho,setHecho]=useState(null);
 
   useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getPromos'); setPromos(r.ok?r.promos:[]); }catch(e){ setPromos([]); } })(); },[]);
-
   const svcPorId=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
-  const promo=(promos||[]).find(p=>p.numero===promoNum)||null;
-  const elegidos = tipo==='promo' ? (promo?promo.servicios:[]) : filas.map(f=>f.sid).filter(Boolean);
-  const firstSid = elegidos[0]||'';
-
-  useEffect(()=>{ setHora(''); setNotaHora(''); if(!firstSid){ setSlots(null); setCerrado(false); return; }
-    (async()=>{ setSlots(null); try{ const r=await apiGet('getDisponibilidad',{servicio_id:firstSid,fecha:dia});
-      if(r.ok){ setSlots(r.slots||[]); setCerrado(!!r.cerrado); setNotaHora(r.nota||''); } else setSlots([]); }catch(e){ setSlots([]); } })();
-  },[firstSid,dia]);
-
   const money=n=>'$'+Math.round(n||0);
-  const totalPrecio = tipo==='promo' ? (promo?promo.precio:0) : elegidos.reduce((s,id)=>s+((svcPorId[id]&&+svcPorId[id].precio)||0),0);
-  const totalDur = elegidos.reduce((s,id)=>s+((svcPorId[id]&&+svcPorId[id].duracion)||0),0);
 
-  const cambiarTipo=t=>{ setTipo(t); setAviso('');
-    if(t==='normal') setFilas(f=>[f[0]||{area:'',sid:''}]);
-    else if(t==='mixto'||t==='especial') setFilas(f=>{ const n=[...f]; while(n.length<2)n.push({area:'',sid:''}); return n; }); };
-  const setFila=(i,patch)=> setFilas(f=>f.map((x,j)=>j===i?{...x,...patch}:x));
-  const addFila=()=> setFilas(f=>[...f,{area:'',sid:''}]);
-  const delFila=i=> setFilas(f=>f.length>1?f.filter((_,j)=>j!==i):f);
+  const HOR={1:['09:00','19:00'],2:['09:00','19:00'],3:['09:00','19:00'],4:['09:00','19:00'],5:['09:00','19:00'],6:['08:00','17:00'],0:null};
+  const pm=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
+  const hhmm=m=>{const z=n=>(n<10?'0':'')+n;return z(Math.floor(m/60))+':'+z(m%60);};
+  const dow=new Date(dia+'T12:00:00').getDay();
+  const cerrado=!HOR[dow];
+  const horOpts=useMemo(()=>{ const h=HOR[dow]; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[]; for(let t=a;t<c;t+=15)o.push(hhmm(t)); return o; },[dia]);
+
+  const setPer=(i,patch)=>setPersonas(ps=>ps.map((p,j)=>j===i?{...p,...patch}:p));
+  const setFila=(pi,fi,patch)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:{...p,filas:p.filas.map((f,k)=>k===fi?{...f,...patch}:f)}));
+  const addFila=pi=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:(p.filas.length>=MAXSERV?p:{...p,filas:[...p.filas,{area:'',sid:''}]})));
+  const delFila=(pi,fi)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:(p.filas.length>1?{...p,filas:p.filas.filter((_,k)=>k!==fi)}:p)));
+  const cambiarTipo=(pi,t)=>setPersonas(ps=>ps.map((p,j)=>{ if(j!==pi)return p; let filas=p.filas;
+    if(t==='normal')filas=[filas[0]||{area:'',sid:''}];
+    else if(t==='mixto'||t==='especial'){filas=[...filas];while(filas.length<2)filas.push({area:'',sid:''});}
+    return {...p,tipo:t,filas}; }));
+  const addPersona=()=>setPersonas(ps=>[...ps,nuevaPersona()]);
+  const delPersona=i=>setPersonas(ps=>ps.length>1?ps.filter((_,j)=>j!==i):ps);
+
+  const promoDe=num=>(promos||[]).find(p=>p.numero===num)||null;
+  const serviciosDe=p=> p.tipo==='promo' ? (promoDe(p.promoNum)?promoDe(p.promoNum).servicios:[]) : p.filas.map(f=>f.sid).filter(Boolean);
+  const totalPrecio=personas.reduce((s,p)=> s + (p.tipo==='promo'
+      ? (promoDe(p.promoNum)?promoDe(p.promoNum).precio:0)
+      : serviciosDe(p).reduce((a,id)=>a+((svcPorId[id]&&+svcPorId[id].precio)||0),0)),0);
 
   const agendar=async()=>{
-    if(!nombre.trim()) return setAviso('Pon el nombre de la clienta');
-    if(!elegidos.length) return setAviso(tipo==='promo'?'Elige una promoción':'Elige al menos un servicio');
     if(!hora) return setAviso('Elige la hora');
+    const payload=[];
+    for(let i=0;i<personas.length;i++){ const p=personas[i];
+      if(!p.nombre.trim()) return setAviso('Falta el nombre de la persona '+(i+1));
+      const sv=serviciosDe(p);
+      if(!sv.length) return setAviso((p.tipo==='promo'?'Elige una promo en':'Elige al menos un servicio en')+' la persona '+(i+1));
+      payload.push({cliente_nombre:p.nombre.trim(),telefono:p.tel.trim(),servicios:sv});
+    }
     setEnviando(true); setAviso('');
-    try{
-      const r=await apiPost('crearCitaMulti',{servicios:elegidos,fecha:dia,hora_inicio:hora,cliente_nombre:nombre.trim(),telefono:tel.trim()});
-      if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar');
-    }catch(e){ setAviso('Error de conexión'); }
+    try{ const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
+      if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar'); }
+    catch(e){ setAviso('Error de conexión'); }
     setEnviando(false);
   };
-  const reset=()=>{ setHecho(null);setNombre('');setTel('');setDia(hoy());setHora('');setTipo('normal');setFilas([{area:'',sid:''}]);setPromoNum('');setAviso(''); };
+  const reset=()=>{ setHecho(null);setDia(hoy());setHora('');setPersonas([nuevaPersona()]);setAviso(''); };
 
   if(hecho) return (
     <div className="fade" style={{textAlign:'center'}}>
-      <div className="ok-circle" style={{background:colorArea(hecho.citas[0].area)}}>
+      <div className="ok-circle" style={{background:'var(--brand)'}}>
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4"><path d="M5 13l4 4L19 7"/></svg>
       </div>
-      <div className="display" style={{fontSize:22,fontWeight:600}}>¡Cita agendada!</div>
-      <div className="card summary" style={{marginTop:18,textAlign:'left'}}>
-        <div className="row"><span className="k">Clienta</span><span>{hecho.cliente_nombre}</span></div>
-        <div className="row"><span className="k">Fecha</span><span>{fechaBonita(hecho.fecha)}</span></div>
-        {hecho.citas.map(c=>(
-          <div className="row" key={c.id}><span className="k">{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>
-        ))}
-      </div>
+      <div className="display" style={{fontSize:22,fontWeight:600}}>¡Cita{hecho.personas.length>1?'s':''} agendada{hecho.personas.length>1?'s':''}!</div>
+      <div style={{fontSize:14,color:'var(--soft)',marginTop:4,textTransform:'capitalize'}}>{fechaLarga(hecho.fecha)}</div>
+      {hecho.personas.map((per,i)=>(
+        <div className="card summary" key={i} style={{marginTop:14,textAlign:'left'}}>
+          <div className="row"><span className="k" style={{fontWeight:700}}>{per.cliente_nombre}</span><span></span></div>
+          {per.citas.map(c=><div className="row" key={c.id}><span className="k" style={{fontWeight:400}}>{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>)}
+        </div>
+      ))}
       <button className="btn" onClick={reset}>Nueva cita</button>
     </div>
   );
@@ -626,56 +639,59 @@ function Reservar({areas,servicios,colorArea}){
     <div className="fade">
       <div className="sec-title">Agendar cita</div>
 
-      <label>Clienta *</label>
-      <input className="inp" value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Nombre de la clienta" />
-      <label>Teléfono</label>
-      <input className="inp" type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="0999999999" />
-
       <div className="grid2">
         <div><label>Día</label>
-          <input type="date" className="date-input" value={dia} min={hoy()} onChange={e=>setDia(e.target.value)} /></div>
+          <input type="date" className="date-input" value={dia} min={hoy()} onChange={e=>{setDia(e.target.value);setHora('');}} /></div>
         <div><label>Hora</label>
           <select className="sel" value={hora} onChange={e=>setHora(e.target.value)}>
-            <option value="">{!firstSid?'Elige servicio…':slots===null?'Cargando…':cerrado?'Cerrado 🌙':((slots||[]).length?'Elige hora…':'Sin horarios')}</option>
-            {(slots||[]).map(h=><option key={h} value={h}>{h}</option>)}
+            <option value="">{cerrado?'Cerrado 🌙':'Elige hora…'}</option>
+            {horOpts.map(h=><option key={h} value={h}>{h}</option>)}
           </select></div>
       </div>
-      {notaHora && <div className="promo-hint">ℹ️ {notaHora}</div>}
+      <div className="promo-hint">Todas las personas inician a la hora elegida (en paralelo, cada una con su staff).</div>
 
-      <label>Tipo de servicio</label>
-      <div className="seg">
-        {[['normal','Normal'],['mixto','Mixto (2)'],['especial','Especial (+2)'],['promo','Promoción']].map(([k,l])=>
-          <button key={k} className={"seg-b"+(tipo===k?' on':'')} onClick={()=>cambiarTipo(k)}>{l}</button>)}
-      </div>
-
-      {tipo!=='promo' ? <>
-        {filas.map((f,i)=>(
-          <div className="srow" key={i}>
-            <div className="srow-h"><span>Servicio {i+1}</span>{filas.length>1 && <button className="srow-x" onClick={()=>delFila(i)} aria-label="Quitar">×</button>}</div>
-            <select className="sel" value={f.area} onChange={e=>setFila(i,{area:e.target.value,sid:''})}>
-              <option value="">Área…</option>
-              {areas.map(a=><option key={a.area} value={a.area}>{a.area}</option>)}
-            </select>
-            <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setFila(i,{sid:e.target.value})}>
-              <option value="">{f.area?'Especifique…':'Elige área primero'}</option>
-              {servicios.filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio} · {money(s.precio)} · {s.duracion}min</option>)}
-            </select>
+      {personas.map((p,pi)=>(
+        <div className="pcard" key={pi}>
+          <div className="pcard-h"><span>Persona {pi+1}</span>{personas.length>1 && <button className="srow-x" onClick={()=>delPersona(pi)} aria-label="Quitar persona">×</button>}</div>
+          <input className="inp" placeholder="Nombre de la clienta" value={p.nombre} onChange={e=>setPer(pi,{nombre:e.target.value})} />
+          <input className="inp" type="tel" placeholder="Teléfono (opcional)" value={p.tel} onChange={e=>setPer(pi,{tel:e.target.value})} />
+          <div className="seg">
+            {[['normal','Normal'],['mixto','Mixto'],['especial','Especial'],['promo','Promoción']].map(([k,l])=>
+              <button key={k} className={"seg-b"+(p.tipo===k?' on':'')} onClick={()=>cambiarTipo(pi,k)}>{l}</button>)}
           </div>
-        ))}
-        <button className="addx" onClick={addFila}>+ Agregar servicio Extra</button>
-      </> : <>
-        <select className="sel" value={promoNum} onChange={e=>setPromoNum(e.target.value)}>
-          <option value="">{promos===null?'Cargando…':((promos||[]).length?'No. de promo…':'Se conecta con NexServ')}</option>
-          {(promos||[]).map(p=><option key={p.numero} value={p.numero}>#{p.numero} · {p.nombre}</option>)}
-        </select>
-        {(promos!==null && !(promos||[]).length) && <div className="promo-hint">Las promociones se administran en NexServ. Cuando lo conectemos, aparecerán aquí automáticamente.</div>}
-        {promo && <div className="promo-box">
-          <div className="promo-t">Incluye</div>
-          {promo.servicios.map(id=><span key={id} className="promo-chip">{svcPorId[id]?svcPorId[id].servicio:id}</span>)}
-        </div>}
-      </>}
 
-      {elegidos.length>0 && <div className="tot-line">{elegidos.length} servicio{elegidos.length>1?'s':''} · {totalDur} min · {money(totalPrecio)}</div>}
+          {p.tipo!=='promo' ? <>
+            {p.filas.map((f,fi)=>(
+              <div className="srow" key={fi}>
+                <div className="srow-h"><span>Servicio {fi+1}</span>{p.filas.length>1 && <button className="srow-x" onClick={()=>delFila(pi,fi)} aria-label="Quitar">×</button>}</div>
+                <select className="sel" value={f.area} onChange={e=>setFila(pi,fi,{area:e.target.value,sid:''})}>
+                  <option value="">Área…</option>
+                  {areas.map(a=><option key={a.area} value={a.area}>{a.area}</option>)}
+                </select>
+                <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setFila(pi,fi,{sid:e.target.value})}>
+                  <option value="">{f.area?'Especifique…':'Elige área primero'}</option>
+                  {servicios.filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio} · {money(s.precio)} · {s.duracion}min</option>)}
+                </select>
+              </div>
+            ))}
+            {p.filas.length<MAXSERV
+              ? <button className="addx" onClick={()=>addFila(pi)}>+ Agregar servicio extra ({p.filas.length}/{MAXSERV})</button>
+              : <div className="cap-note">Máximo {MAXSERV} servicios por persona</div>}
+          </> : <>
+            <select className="sel" value={p.promoNum} onChange={e=>setPer(pi,{promoNum:e.target.value})}>
+              <option value="">{promos===null?'Cargando…':((promos||[]).length?'No. de promo…':'Se conecta con NexServ')}</option>
+              {(promos||[]).map(pr=><option key={pr.numero} value={pr.numero}>#{pr.numero} · {pr.nombre}</option>)}
+            </select>
+            {promoDe(p.promoNum) && <div className="promo-box"><div className="promo-t">Incluye</div>
+              {promoDe(p.promoNum).servicios.map(id=><span key={id} className="promo-chip">{svcPorId[id]?svcPorId[id].servicio:id}</span>)}</div>}
+            {(promos!==null && !(promos||[]).length) && <div className="promo-hint">Las promociones se administran en NexServ. Cuando lo conectemos, aparecerán aquí.</div>}
+          </>}
+        </div>
+      ))}
+
+      <button className="addp" onClick={addPersona}>+ Agregar otra persona</button>
+
+      {totalPrecio>0 && <div className="tot-line">Total estimado · {money(totalPrecio)}</div>}
       {aviso && <div className="aviso">{aviso}</div>}
       <button className="btn" disabled={enviando} onClick={agendar}>{enviando?'Agendando…':'Agendar cita'}</button>
     </div>
