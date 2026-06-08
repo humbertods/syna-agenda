@@ -947,9 +947,14 @@ function Reservar({areas,servicios,colorArea}){
       {totalPrecio>0 && <div className="tot-line">Total estimado · {money(totalPrecio)}</div>}
       {aviso && <div className="aviso">{aviso}</div>}
       <button className="btn-prev" onClick={()=>{
-        let svc=null;
-        for(const p of personas){ for(const f of p.filas){ if(f.area!=='__promo__' && f.sid){svc=svcPorId[f.sid];break;} } if(svc)break; }
-        if(!svc) return setAviso('Elige al menos un servicio para previsualizar los espacios');
+        let svc=null, hayPromo=false;
+        for(const p of personas){ for(const f of p.filas){
+          if(f.area==='__promo__' && f.sid) hayPromo=true;
+          if(f.area!=='__promo__' && f.sid && !svc) svc=svcPorId[f.sid];
+        } }
+        if(!svc) return setAviso(hayPromo
+          ? 'La previsualización es solo para servicios por ahora (las promos no se previsualizan)'
+          : 'Elige al menos un servicio para previsualizar los espacios');
         setAviso(''); setPreview(svc);
       }}>Previsualización · ver espacios</button>
       <button className="btn" disabled={enviando} onClick={agendar}>{enviando?'Agendando…':'Agendar cita'}</button>
