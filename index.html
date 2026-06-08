@@ -371,7 +371,11 @@
     color:var(--ink);text-transform:uppercase;padding:9px 4px}
   .tl-body{display:flex;position:relative}
   .tl-gutter{width:46px;flex:0 0 auto;position:relative}
-  .tl-hlabel{position:absolute;right:6px;transform:translateY(-50%);font-size:10.5px;color:var(--soft);font-weight:600;white-space:nowrap}
+  .tl-hlabel{position:absolute;right:6px;transform:translateY(-50%);font-size:11.5px;color:var(--ink);font-weight:700;white-space:nowrap}
+  .franja-seg{display:flex;gap:8px;margin:2px 0 14px}
+  .franja-b{flex:1;padding:11px 8px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+  .franja-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
   .tl-col{width:156px;flex:0 0 auto;position:relative;border-left:1px solid var(--line)}
   .tl-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.045)}
   .tl-pill{position:absolute;left:4px;right:4px;border:none;border-radius:9px;padding:4px 7px;text-align:left;cursor:pointer;
@@ -910,6 +914,8 @@ function Agenda({servicios,colorArea}){
   const [filtro,setFiltro]=useState('todos');
   const [reagendar,setReagendar]=useState(null);
   const [accion,setAccion]=useState(null);
+  const [diaAbierto,setDiaAbierto]=useState(false);
+  const [franja,setFranja]=useState('dia');
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
   const pad2=n=>String(n).padStart(2,'0');
@@ -1005,9 +1011,11 @@ function Agenda({servicios,colorArea}){
   const cambiarMes=delta=>{let m=cur.m+delta,y=cur.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCur({y,m});};
 
   // ---- timeline por columnas (staff / área) ----
-  const PPM=1.35;
-  const tlH=Math.max(60,(cierra-abre)*PPM);
-  const horas=[]; for(let h=Math.ceil(abre/60); h*60<=cierra; h++) horas.push(h);
+  const franjaIni = (franja==='tarde')?CORTE:abre;
+  const franjaFin = (franja==='manana')?CORTE:cierra;
+  const PPM = (franja==='dia')?1.35:2.3;
+  const tlH=Math.max(120,(franjaFin-franjaIni)*PPM);
+  const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
   const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
   const tipoDe=svc=>{ if(!svc)return 'cejas_short';
     const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
@@ -1028,63 +1036,71 @@ function Agenda({servicios,colorArea}){
     <div className="fade">
       <div className="sec-title">Agenda</div>
 
-      <div className="cal card">
-        <div className="cal-head">
-          <button className="cal-nav" onClick={()=>cambiarMes(-1)} aria-label="Mes anterior">‹</button>
-          <div className="cal-mes">{MESES_L[cur.m]}{cur.y!==ahora.getFullYear()?(' '+cur.y):''}</div>
-          <button className="cal-nav" onClick={()=>cambiarMes(1)} aria-label="Mes siguiente">›</button>
+      {!diaAbierto ?
+        <div className="cal card">
+          <div className="cal-head">
+            <button className="cal-nav" onClick={()=>cambiarMes(-1)} aria-label="Mes anterior">‹</button>
+            <div className="cal-mes">{MESES_L[cur.m]}{cur.y!==ahora.getFullYear()?(' '+cur.y):''}</div>
+            <button className="cal-nav" onClick={()=>cambiarMes(1)} aria-label="Mes siguiente">›</button>
+          </div>
+          <div className="cal-dows">{['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=><span key={i} className={"cal-dow"+(i===5?' sab':'')+(i===6?' dom':'')}>{d}</span>)}</div>
+          <div className="cal-grid">
+            {celdas.map((d,i)=>{ if(d===null)return <span key={i} className="cal-cell empty"></span>;
+              const col=i%7,f=fechaDe(d); const cls="cal-cell"+(f===sel?' sel':'')+(f===hoyStr?' hoy':'')+(col===6?' dom':'')+(col===5?' sab':'');
+              return <button key={i} className={cls} onClick={()=>{setSel(f);setFranja('dia');setDiaAbierto(true);}}><span className="cd">{d}</span><span className={"cdot"+(conCitas[d]?'':' ghost')}></span></button>; })}
+          </div>
         </div>
-        <div className="cal-dows">{['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=><span key={i} className={"cal-dow"+(i===5?' sab':'')+(i===6?' dom':'')}>{d}</span>)}</div>
-        <div className="cal-grid">
-          {celdas.map((d,i)=>{ if(d===null)return <span key={i} className="cal-cell empty"></span>;
-            const col=i%7,f=fechaDe(d); const cls="cal-cell"+(f===sel?' sel':'')+(f===hoyStr?' hoy':'')+(col===6?' dom':'')+(col===5?' sab':'');
-            return <button key={i} className={cls} onClick={()=>setSel(f)}><span className="cd">{d}</span><span className={"cdot"+(conCitas[d]?'':' ghost')}></span></button>; })}
-        </div>
-      </div>
+      :
+        <>
+          <button className="back" onClick={()=>setDiaAbierto(false)}>‹ Volver al mes</button>
+          <div className="sub" style={{textTransform:'capitalize',marginTop:2}}>{fechaLarga(sel)}</div>
 
-      <div className="sub" style={{textTransform:'capitalize'}}>{fechaLarga(sel)}</div>
-
-      {!selEnMes ? <div className="empty" style={{padding:'22px 0'}}>Toca un día para ver su tablero</div> :
-       mesData===null ? <div className="spinner"></div> :
-       cerrado ? <div className="empty" style={{padding:'28px 0'}}>Domingo — no laboramos 🌙</div> :
-       <>
-         <div className="ag-resumen">{citas.length} citas · {money(totVal)} · {libresTot} libres</div>
-
-         <div className="lg">
-           {LEYENDA.map(([t,l])=><span key={t} className="lg-i"><i style={{background:TIPOCOL[t][0]}}></i>{l}</span>)}
-         </div>
-
-         <div className="tl-scroll">
-           <div className="tl-inner" style={{minWidth:46+COLS.length*156}}>
-             <div className="tl-hdr">
-               <div className="tl-corner"></div>
-               {COLS.map(c=><div key={c} className="tl-chead">{c}</div>)}
+          {mesData===null ? <div className="spinner"></div> :
+           cerrado ? <div className="empty" style={{padding:'28px 0'}}>Domingo — no laboramos 🌙</div> :
+           <>
+             <div className="ag-resumen">{citas.length} citas · {money(totVal)} · {libresTot} libres</div>
+             <div className="lg">
+               {LEYENDA.map(([t,l])=><span key={t} className="lg-i"><i style={{background:TIPOCOL[t][0]}}></i>{l}</span>)}
              </div>
-             <div className="tl-body" style={{height:tlH}}>
-               <div className="tl-gutter">
-                 {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-abre)*PPM}}>{hLbl(h)}</div>)}
-               </div>
-               {COLS.map(col=>(
-                 <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
-                   {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-abre)*PPM}}></div>)}
-                   {citas.filter(c=>colDe(c.svc)===col).map(c=>{
-                     const cc=TIPOCOL[tipoDe(c.svc)]; const top=(c.ini-abre)*PPM, hgt=Math.max(22,(c.fin-c.ini)*PPM);
-                     const pend=(c.estado||'').toLowerCase()!=='confirmada';
-                     const abonado=c.abono && String(c.abono)!=='' && String(c.abono)!=='0';
-                     return (
-                       <button key={c.id} className={"tl-pill"+(pend?' pend':'')} style={{top,height:hgt,background:cc[0],color:cc[1]}} onClick={()=>setAccion(c)}>
-                         <div className="tl-pill-t">{abonado?'💵 ':''}{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
-                         {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
-                       </button>
-                     );
-                   })}
+             <div className="franja-seg">
+               {[['manana','Mañana'],['tarde','Tarde'],['dia','Todo el día']].map(([k,l])=>
+                 <button key={k} className={"franja-b"+(franja===k?' on':'')} onClick={()=>setFranja(k)}>{l}</button>)}
+             </div>
+             <div className="tl-scroll">
+               <div className="tl-inner" style={{minWidth:46+COLS.length*156}}>
+                 <div className="tl-hdr">
+                   <div className="tl-corner"></div>
+                   {COLS.map(c=><div key={c} className="tl-chead">{c}</div>)}
                  </div>
-               ))}
+                 <div className="tl-body" style={{height:tlH}}>
+                   <div className="tl-gutter">
+                     {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-franjaIni)*PPM}}>{hLbl(h)}</div>)}
+                   </div>
+                   {COLS.map(col=>(
+                     <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
+                       {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
+                       {citas.filter(c=>colDe(c.svc)===col && c.fin>franjaIni && c.ini<franjaFin).map(c=>{
+                         const cc=TIPOCOL[tipoDe(c.svc)];
+                         const top=Math.max(0,(c.ini-franjaIni)*PPM);
+                         const hgt=Math.max(22,(Math.min(c.fin,franjaFin)-Math.max(c.ini,franjaIni))*PPM);
+                         const pend=(c.estado||'').toLowerCase()!=='confirmada';
+                         const abonado=c.abono && String(c.abono)!=='' && String(c.abono)!=='0';
+                         return (
+                           <button key={c.id} className={"tl-pill"+(pend?' pend':'')} style={{top,height:hgt,background:cc[0],color:cc[1]}} onClick={()=>setAccion(c)}>
+                             <div className="tl-pill-t">{abonado?'💵 ':''}{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
+                             {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   ))}
+                 </div>
+               </div>
              </div>
-           </div>
-         </div>
-         <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar · desliza para ver las columnas →</div>
-       </>}
+             <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar · desliza para ver las columnas →</div>
+           </>}
+        </>
+      }
 
       {accion && <CitaSheet cita={accion} onClose={()=>setAccion(null)}
         onReagendar={c=>{setAccion(null);setReagendar(c);}}
