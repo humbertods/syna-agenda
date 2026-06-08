@@ -117,6 +117,7 @@
   .dc-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex:0 0 auto}
   .dc-ic.ok{color:#1E7A34;background:#EAF7EE}
   .dc-ic.can{color:#C0392B;background:#FBEAE7}
+  .atendida-card{margin-top:10px;align-items:center;opacity:.92}
   .resv .who{font-size:16px;font-weight:500}
   .resv .what{font-size:13px;color:var(--soft);margin-top:1px}
   .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
@@ -1799,6 +1800,21 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
         <div className="sub">En proceso <span className="muted" style={{fontWeight:400}}>· ahora</span></div>
         {d.enProceso.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Ninguna cita en curso</div> :
           d.enProceso.map((p,i)=>fila(p,i,true))}
+
+        <div className="sub">Atendidas hoy <span className="muted" style={{fontWeight:400}}>· {(d.atendidas||[]).length}</span></div>
+        {(d.atendidas||[]).length===0 ? <div className="empty" style={{padding:'14px 0'}}>Aún ninguna atendida hoy 🌿</div> : <>
+          <div className="muted" style={{fontSize:12.5,margin:'-2px 2px 8px'}}>Listas para el seguimiento de satisfacción 💬</div>
+          {(d.atendidas||[]).map((p,i)=>(
+            <div key={'at'+i} className="resv atendida-card" style={{borderLeftColor:colorArea(p.area)}}>
+              <div className="time">{p.hora_inicio}<small>{p.hora_fin}</small></div>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="who">{p.cliente}</div>
+                <div className="what">{p.servicio} · {p.area}</div>
+              </div>
+              <span className="dc-ic ok" style={{width:30,height:30,fontSize:15}}>✓</span>
+            </div>
+          ))}
+        </>}
       </>}
 
       {!esCEO && <div className="muted" style={{textAlign:'center',fontSize:12.5,marginTop:26}}>Vista de propietario · resumen semanal</div>}
