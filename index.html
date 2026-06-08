@@ -456,6 +456,7 @@
   .prev-confirm{width:100%;padding:15px;border-radius:14px;border:none;background:#111;color:#fff;
     font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
   .prev-confirm:disabled{opacity:.5}
+  .rec-aviso{margin-top:8px;font-size:12.5px;color:#B23A2E;background:#FBEAE7;border:1px solid #F2C9C2;border-radius:9px;padding:7px 10px}
   .promo-t{font-size:11.5px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
   .promo-chip{display:inline-block;background:#F0EEF8;color:var(--brand-deep);border-radius:999px;padding:5px 11px;
     font-size:12.5px;font-weight:600;margin:0 6px 6px 0}
@@ -1094,13 +1095,32 @@ function Recepcion({go, servicios}){
   const addSvc=key=>setEdits(e=>({...e,[key]:[...(e[key]||[]),{area:'',sid:''}]}));
   const delSvc=(key,i)=>setEdits(e=>({...e,[key]:e[key].filter((_,j)=>j!==i)}));
 
+  const [avisoT,setAvisoT]=useState({});
+
   const confirmar=async(t)=>{
+    const svs=(edits[t.key]||[]).filter(f=>f.sid);
+    if(!svs.length){ setAvisoT(a=>({...a,[t.key]:'Reconfirma al menos un servicio'})); return; }
+    setAvisoT(a=>({...a,[t.key]:''}));
     setEstadoT(s=>({...s,[t.key]:'busy'}));
     try{
-      await Promise.all(t.rows.map(r=>apiPost('actualizarCita',{id:r.id,estado:'confirmada'})));
-      // PENDIENTE: enviar a la lista de espera de NexServ (con edits[t.key]) usando la función de NexServ.
-      setEstadoT(s=>({...s,[t.key]:'confirmado'}));
-    }catch(e){ setEstadoT(s=>({...s,[t.key]:''})); }
+      const nombres=svs.map(f=>(svcPorId[f.sid]?svcPorId[f.sid].servicio:f.sid));
+      const areas=[...new Set(svs.map(f=>f.area).filter(Boolean))];
+      const total=svs.reduce((a,f)=>a+(Number(svcPorId[f.sid]&&svcPorId[f.sid].precio)||0),0);
+      const payload={
+        codigo: esCodigo(t.cliente_id)?t.cliente_id:'',
+        nombre: t.cliente_nombre||'',
+        servicio: nombres.join(' + '),
+        area: areas[0]||'',
+        prioridad: 'Normal',
+        total: total,
+        observaciones: 'Agendada '+(t.hora||'')+' · vía SYNA'
+      };
+      if(areas.length>1) payload.secuencia=areas;
+      const r=await apiPost('enviarListaEspera',payload);
+      await Promise.all(t.rows.map(rr=>apiPost('actualizarCita',{id:rr.id,estado:'confirmada'})));
+      if(r && r.ok){ setEstadoT(s=>({...s,[t.key]:'confirmado'})); }
+      else { setEstadoT(s=>({...s,[t.key]:''})); setAvisoT(a=>({...a,[t.key]:(r&&r.error)||'No se pudo pasar a la lista de espera de NexServ'})); }
+    }catch(e){ setEstadoT(s=>({...s,[t.key]:''})); setAvisoT(a=>({...a,[t.key]:'Error de conexión, reintenta'})); }
   };
   const cancelar=async(t)=>{
     setEstadoT(s=>({...s,[t.key]:'busy'}));
@@ -1149,6 +1169,7 @@ function Recepcion({go, servicios}){
                <button className="rec-b ok" disabled={est==='busy'} onClick={()=>confirmar(t)}>{est==='busy'?'…':'✓ Confirmar llegada'}</button>
                <button className="rec-b can" disabled={est==='busy'} onClick={()=>cancelar(t)}>✕ Cancelar ticket</button>
              </div>
+             {avisoT[t.key] && <div className="rec-aviso">⚠️ {avisoT[t.key]}</div>}
            </div>
          );
        })}
