@@ -403,6 +403,33 @@
   .promo-chip{display:inline-block;background:#F0EEF8;color:var(--brand-deep);border-radius:999px;padding:5px 11px;
     font-size:12.5px;font-weight:600;margin:0 6px 6px 0}
   .promo-hint{font-size:12.5px;color:var(--soft);margin-top:8px;line-height:1.4}
+
+  /* ---- Menú: item neutro ---- */
+  .menu-go{width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:15px;color:var(--ink);
+    padding:12px;cursor:pointer;border-radius:10px;display:flex;align-items:center;gap:8px}
+  .menu-go:active{background:rgba(0,0,0,.05)}
+
+  /* ---- Permisos y bloqueos ---- */
+  .perm-intro{font-size:13px;color:var(--soft);line-height:1.45;margin:2px 2px 14px}
+  .perm-area{margin-bottom:18px}
+  .perm-area-t{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--soft);margin:0 2px 8px}
+  .perm-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(40,30,80,.06)}
+  .perm-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .perm-name{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .perm-off{font-size:10.5px;font-weight:600;color:#A32D2D;background:#FCEBEB;border-radius:6px;padding:2px 6px}
+  .perm-add{flex:0 0 auto;border:.5px solid var(--brand);background:var(--surface);color:var(--brand);
+    border-radius:999px;padding:6px 13px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .perm-list{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+  .perm-blk{display:flex;align-items:center;gap:9px;background:var(--panel);border-radius:10px;padding:8px 10px}
+  .perm-tag{flex:0 0 auto;font-size:11px;font-weight:700;border-radius:6px;padding:3px 8px}
+  .perm-tag.lunch{background:#FFE9D6;color:#9A5A12}
+  .perm-tag.perm{background:#E7EBF6;color:#3A4B86}
+  .perm-blk-t{flex:1;min-width:0;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .perm-del{flex:0 0 auto;background:none;border:none;font-size:20px;line-height:1;color:var(--soft);cursor:pointer;padding:0 2px}
+  .perm-form{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+  .perm-form .seg{margin-bottom:0}
+  .perm-form .btn{margin-top:2px}
   .tot-line{font-size:14px;font-weight:700;color:var(--ink);text-align:center;margin:14px 0 2px}
   .aviso{color:#A32D2D;font-size:14px;margin-top:12px;text-align:center}
 </style>
@@ -499,6 +526,8 @@ function App(){
                 <button className={"sw-toggle"+(asistenteOn?' on':'')} onClick={toggleAsis} aria-label="Activar o desactivar asistente"><span className="sw-knob"></span></button>
               </div>
               <div className="menu-sep"></div>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}>🔒 Permisos y bloqueos</button>
+              <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
             </div>
           </>}
@@ -512,6 +541,7 @@ function App(){
             tab==='calendario'  ? <Agenda servicios={servicios} colorArea={colorArea}/> :
             tab==='reservar'    ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/> :
             (tab==='asistente' && asistenteOn) ? <Asistente/> :
+            tab==='permisos'    ? <Permisos go={go}/> :
             tab==='seguimiento' ? <Seguimiento/> :
             tab==='fidelidad'   ? <Fidelidad/> :
             <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
@@ -646,6 +676,90 @@ function Reservar({areas,servicios,colorArea}){
       {elegidos.length>0 && <div className="tot-line">{elegidos.length} servicio{elegidos.length>1?'s':''} · {totalDur} min · {money(totalPrecio)}</div>}
       {aviso && <div className="aviso">{aviso}</div>}
       <button className="btn" disabled={enviando} onClick={agendar}>{enviando?'Agendando…':'Agendar cita'}</button>
+    </div>
+  );
+}
+
+/* ---------- Permisos y bloqueos de staff ---------- */
+function Permisos({go}){
+  const [staff,setStaff]=useState(null);
+  const [bloqueos,setBloqueos]=useState([]);
+  const [openId,setOpenId]=useState(null);
+  const [form,setForm]=useState({motivo:'Almuerzo',cuando:'diario',fecha:hoy(),ini:'13:00',fin:'14:00'});
+  const [busy,setBusy]=useState(false);
+  const [aviso,setAviso]=useState('');
+
+  const cargar=async()=>{
+    try{ const [s,b]=await Promise.all([apiGet('getStaff'),apiGet('getBloqueos')]);
+      setStaff(s.ok?s.staff:[]); setBloqueos(b.ok?b.bloqueos:[]); }
+    catch(e){ setStaff([]); setBloqueos([]); }
+  };
+  useEffect(()=>{cargar()},[]);
+
+  const abrir=id=>{ setOpenId(openId===id?null:id); setForm({motivo:'Almuerzo',cuando:'diario',fecha:hoy(),ini:'13:00',fin:'14:00'}); setAviso(''); };
+  const guardar=async(st)=>{
+    if(form.ini>=form.fin) return setAviso('La hora de fin debe ser mayor');
+    setBusy(true); setAviso('');
+    const fecha = form.cuando==='diario'?'diario' : form.cuando==='hoy'?hoy() : form.fecha;
+    try{ const r=await apiPost('crearBloqueo',{staff_id:st.id,staff_nombre:st.nombre,fecha,hora_inicio:form.ini,hora_fin:form.fin,motivo:form.motivo});
+      if(r.ok){ setOpenId(null); cargar(); } else setAviso(r.error||'No se pudo guardar'); }
+    catch(e){ setAviso('Error de conexión'); }
+    setBusy(false);
+  };
+  const borrar=async(id)=>{ if(!confirm('¿Quitar este bloqueo?'))return; await apiPost('eliminarBloqueo',{id}); cargar(); };
+
+  const blkDe=id=> bloqueos.filter(b=>b.staff_id===id);
+  const fechaTxt=f=> f==='diario'?'Todos los días': fechaCorta(f);
+  const porArea={}; (staff||[]).forEach(st=>{ (porArea[st.area]=porArea[st.area]||[]).push(st); });
+
+  return (
+    <div className="fade">
+      <button className="back" onClick={()=>go('principal')}>‹ Volver</button>
+      <div className="sec-title">Permisos y bloqueos</div>
+      <div className="perm-intro">Bloquea el horario de una staff (almuerzo, permisos) y no se le asignarán citas en ese rango.</div>
+
+      {staff===null ? <div className="spinner"></div> :
+       staff.length===0 ? <div className="empty">No hay staff en la hoja Staff todavía.</div> :
+       Object.keys(porArea).map(area=>(
+         <div key={area} className="perm-area">
+           <div className="perm-area-t">{area}</div>
+           {porArea[area].map(st=>(
+             <div key={st.id} className="perm-card">
+               <div className="perm-head">
+                 <div className="perm-name">{st.nombre||st.id}{!st.activo && <span className="perm-off">inactiva</span>}</div>
+                 <button className="perm-add" onClick={()=>abrir(st.id)}>{openId===st.id?'Cancelar':'+ Bloqueo'}</button>
+               </div>
+
+               {blkDe(st.id).length>0 && <div className="perm-list">
+                 {blkDe(st.id).map(b=>(
+                   <div key={b.id} className="perm-blk">
+                     <span className={"perm-tag "+(b.motivo==='Almuerzo'?'lunch':'perm')}>{b.motivo}</span>
+                     <span className="perm-blk-t">{b.hora_inicio}–{b.hora_fin} · {fechaTxt(b.fecha)}</span>
+                     <button className="perm-del" onClick={()=>borrar(b.id)} aria-label="Quitar">×</button>
+                   </div>
+                 ))}
+               </div>}
+
+               {openId===st.id && <div className="perm-form">
+                 <div className="seg">
+                   {['Almuerzo','Permiso'].map(m=><button key={m} className={"seg-b"+(form.motivo===m?' on':'')} onClick={()=>setForm({...form,motivo:m})}>{m}</button>)}
+                 </div>
+                 <div className="seg">
+                   {[['diario','Todos los días'],['hoy','Hoy'],['fecha','Una fecha']].map(([k,l])=>
+                     <button key={k} className={"seg-b"+(form.cuando===k?' on':'')} onClick={()=>setForm({...form,cuando:k})}>{l}</button>)}
+                 </div>
+                 {form.cuando==='fecha' && <input type="date" className="date-input" value={form.fecha} min={hoy()} onChange={e=>setForm({...form,fecha:e.target.value})} />}
+                 <div className="grid2">
+                   <div><label>Desde</label><input type="time" className="sel" value={form.ini} onChange={e=>setForm({...form,ini:e.target.value})} /></div>
+                   <div><label>Hasta</label><input type="time" className="sel" value={form.fin} onChange={e=>setForm({...form,fin:e.target.value})} /></div>
+                 </div>
+                 {aviso && <div className="aviso">{aviso}</div>}
+                 <button className="btn" disabled={busy} onClick={()=>guardar(st)}>{busy?'Guardando…':'Bloquear horario'}</button>
+               </div>}
+             </div>
+           ))}
+         </div>
+       ))}
     </div>
   );
 }
