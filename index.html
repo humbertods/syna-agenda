@@ -847,9 +847,6 @@ function Reservar({areas,servicios,colorArea}){
         <div className="card summary" key={i} style={{marginTop:14,textAlign:'left'}}>
           <div className="row"><span className="k" style={{fontWeight:700}}>{per.cliente_nombre}</span><span></span></div>
           {per.citas.map(c=><div className="row" key={c.id}><span className="k" style={{fontWeight:400}}>{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>)}
-          {per.nexserv && (per.nexserv.success||per.nexserv.id)
-            ? <div className="row"><span className="k" style={{fontWeight:400,color:'#1E7A34'}}>✓ Enviada a NexServ{per.nexserv.id?(' · '+per.nexserv.id):''}{per.nexserv.estado?(' ('+per.nexserv.estado+')'):''}</span><span></span></div>
-            : <div className="row"><span className="k" style={{fontWeight:400,color:'#B23A2E'}}>⚠ No se envió a NexServ (reintenta luego)</span><span></span></div>}
         </div>
       ))}
       <button className="btn" onClick={reset}>Nueva cita</button>
