@@ -564,6 +564,7 @@ function Reservar({areas,servicios,colorArea}){
   const [promoNum,setPromoNum]=useState('');
   const [slots,setSlots]=useState(null);
   const [cerrado,setCerrado]=useState(false);
+  const [notaHora,setNotaHora]=useState('');
   const [enviando,setEnviando]=useState(false);
   const [aviso,setAviso]=useState('');
   const [hecho,setHecho]=useState(null);
@@ -575,9 +576,9 @@ function Reservar({areas,servicios,colorArea}){
   const elegidos = tipo==='promo' ? (promo?promo.servicios:[]) : filas.map(f=>f.sid).filter(Boolean);
   const firstSid = elegidos[0]||'';
 
-  useEffect(()=>{ setHora(''); if(!firstSid){ setSlots(null); setCerrado(false); return; }
+  useEffect(()=>{ setHora(''); setNotaHora(''); if(!firstSid){ setSlots(null); setCerrado(false); return; }
     (async()=>{ setSlots(null); try{ const r=await apiGet('getDisponibilidad',{servicio_id:firstSid,fecha:dia});
-      if(r.ok){ setSlots(r.slots||[]); setCerrado(!!r.cerrado); } else setSlots([]); }catch(e){ setSlots([]); } })();
+      if(r.ok){ setSlots(r.slots||[]); setCerrado(!!r.cerrado); setNotaHora(r.nota||''); } else setSlots([]); }catch(e){ setSlots([]); } })();
   },[firstSid,dia]);
 
   const money=n=>'$'+Math.round(n||0);
@@ -639,6 +640,7 @@ function Reservar({areas,servicios,colorArea}){
             {(slots||[]).map(h=><option key={h} value={h}>{h}</option>)}
           </select></div>
       </div>
+      {notaHora && <div className="promo-hint">ℹ️ {notaHora}</div>}
 
       <label>Tipo de servicio</label>
       <div className="seg">
