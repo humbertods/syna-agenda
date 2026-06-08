@@ -847,6 +847,9 @@ function Reservar({areas,servicios,colorArea}){
         <div className="card summary" key={i} style={{marginTop:14,textAlign:'left'}}>
           <div className="row"><span className="k" style={{fontWeight:700}}>{per.cliente_nombre}</span><span></span></div>
           {per.citas.map(c=><div className="row" key={c.id}><span className="k" style={{fontWeight:400}}>{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>)}
+          {per.nexserv && (per.nexserv.success||per.nexserv.id)
+            ? <div className="row"><span className="k" style={{fontWeight:400,color:'#1E7A34'}}>✓ Enviada a NexServ{per.nexserv.id?(' · '+per.nexserv.id):''}{per.nexserv.estado?(' ('+per.nexserv.estado+')'):''}</span><span></span></div>
+            : <div className="row"><span className="k" style={{fontWeight:400,color:'#B23A2E'}}>⚠ No se envió a NexServ (reintenta luego)</span><span></span></div>}
         </div>
       ))}
       <button className="btn" onClick={reset}>Nueva cita</button>
@@ -1082,28 +1085,12 @@ function Recepcion({go, servicios}){
   const [avisoT,setAvisoT]=useState({});
 
   const confirmar=async(t)=>{
-    const svs=(edits[t.key]||[]).filter(f=>f.sid);
-    if(!svs.length){ setAvisoT(a=>({...a,[t.key]:'Reconfirma al menos un servicio'})); return; }
     setAvisoT(a=>({...a,[t.key]:''}));
     setEstadoT(s=>({...s,[t.key]:'busy'}));
     try{
-      const nombres=svs.map(f=>(svcPorId[f.sid]?svcPorId[f.sid].servicio:f.sid));
-      const areas=[...new Set(svs.map(f=>f.area).filter(Boolean))];
-      const total=svs.reduce((a,f)=>a+(Number(svcPorId[f.sid]&&svcPorId[f.sid].precio)||0),0);
-      const payload={
-        codigo: esCodigo(t.cliente_id)?t.cliente_id:'',
-        nombre: t.cliente_nombre||'',
-        servicio: nombres.join(' + '),
-        area: areas[0]||'',
-        prioridad: 'Normal',
-        total: total,
-        observaciones: 'Agendada '+(t.hora||'')+' · vía SYNA'
-      };
-      if(areas.length>1) payload.secuencia=areas;
-      const r=await apiPost('enviarListaEspera',payload);
+      // El ticket ya fue enviado a NexServ al agendar (Prelista). Aquí solo confirmamos en SYNA.
       await Promise.all(t.rows.map(rr=>apiPost('actualizarCita',{id:rr.id,estado:'confirmada'})));
-      if(r && r.ok){ setEstadoT(s=>({...s,[t.key]:'confirmado'})); }
-      else { setEstadoT(s=>({...s,[t.key]:''})); setAvisoT(a=>({...a,[t.key]:(r&&r.error)||'No se pudo pasar a la lista de espera de NexServ'})); }
+      setEstadoT(s=>({...s,[t.key]:'confirmado'}));
     }catch(e){ setEstadoT(s=>({...s,[t.key]:''})); setAvisoT(a=>({...a,[t.key]:'Error de conexión, reintenta'})); }
   };
   const cancelar=async(t)=>{
@@ -1117,7 +1104,7 @@ function Recepcion({go, servicios}){
     <div className="fade">
       <button className="back" onClick={()=>go('principal')}>‹ Volver</button>
       <div className="sec-title">Recepción · tickets de hoy</div>
-      <div className="perm-intro">Cuando llega la clienta, reconfirma sus servicios y dale <b>Confirmar llegada</b> para pasarla a la lista de espera. Si no vino, <b>Cancelar ticket</b>. 💜</div>
+      <div className="perm-intro">Cada cita ya se envía sola a NexServ al agendarse (queda <b>Prelista</b>). Cuando la clienta llega, dale <b>Confirmar llegada</b>. Si no vino, <b>Cancelar ticket</b>. 💜</div>
       {tickets===null ? <div className="spinner"></div> :
        tickets.length===0 ? <div className="empty" style={{padding:'24px 0'}}>No hay tickets para hoy 🌿</div> :
        tickets.map(t=>{
@@ -1125,7 +1112,7 @@ function Recepcion({go, servicios}){
          const llegando = ini!=null && n>=ini-15 && n<ini+60;
          const est=estadoT[t.key]||'';
          const svs=edits[t.key]||[];
-         if(est==='confirmado') return <div key={t.key} className="rec-card done"><div className="rec-cli">{t.cliente_nombre}</div><div className="rec-hecho">✓ Confirmada · pasa a lista de espera</div></div>;
+         if(est==='confirmado') return <div key={t.key} className="rec-card done"><div className="rec-cli">{t.cliente_nombre}</div><div className="rec-hecho">✓ Llegada confirmada</div></div>;
          if(est==='cancelado') return <div key={t.key} className="rec-card cancd"><div className="rec-cli">{t.cliente_nombre}</div><div className="rec-hecho can">✕ Ticket cancelado</div></div>;
          return (
            <div key={t.key} className={"rec-card"+(llegando?' now':'')}>
