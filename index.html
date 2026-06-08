@@ -486,6 +486,38 @@
   .cli-v-srv{font-size:14.5px;font-weight:700;color:var(--ink)}
   .cli-v-tot{font-size:14px;font-weight:800;color:var(--brand);flex:0 0 auto}
   .cli-v-meta{font-size:12.5px;color:var(--soft);margin-top:3px;line-height:1.45}
+  /* ---- Reservar: existente/nueva + ficha ---- */
+  .cli-toggle{display:flex;gap:8px;margin-bottom:10px}
+  .cli-tg{flex:1;padding:11px 6px;border-radius:11px;border:1px solid var(--line2);background:var(--surface);
+    font-family:inherit;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer}
+  .cli-tg.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .cli-pick{position:relative;margin-bottom:6px}
+  .cli-results{background:var(--surface);border:1px solid var(--line2);border-radius:12px;margin-top:6px;overflow:hidden}
+  .cli-res{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;padding:10px 13px;
+    background:none;border:none;border-bottom:1px solid var(--line);font-family:inherit;cursor:pointer}
+  .cli-res:last-child{border-bottom:none}
+  .cli-res b{font-size:14px;color:var(--ink)}
+  .cli-res span{font-size:12px;color:var(--soft)}
+  .cli-res-empty{padding:11px 13px;font-size:13px;color:var(--soft)}
+  .cli-mini{background:var(--panel);border-radius:13px;padding:13px;margin-bottom:6px}
+  .cli-mini-nom{font-size:17px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .cli-cambiar{margin-left:auto;font-family:inherit;font-size:12px;font-weight:700;color:var(--brand);
+    background:none;border:none;cursor:pointer;text-decoration:underline}
+  .cli-mini-meta{font-size:12.5px;color:var(--soft);margin-top:2px}
+  .cli-mini-stats{display:flex;gap:26px;margin-top:9px;font-size:11.5px;color:var(--soft)}
+  .cli-mini-stats b{font-size:14px;color:var(--ink);font-weight:800}
+  .cli-mini-lbl{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--soft);margin:13px 0 7px}
+  .ficha-acc{margin-bottom:7px}
+  .ficha-accb{display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 13px;
+    background:var(--surface);border:1px solid var(--line);border-radius:11px;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+  .ficha-cnt{font-size:12px;color:var(--soft);font-weight:700}
+  .ficha-body{padding:10px 4px 2px}
+  .ficha-it{font-size:12.5px;color:var(--ink);line-height:1.5;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .ficha-it:last-child{border-bottom:none}
+  .ficha-obs{font-size:12.5px;color:var(--ink);line-height:1.45;margin-bottom:5px}
+  .ficha-obs.gen{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px 13px;color:var(--soft)}
+  .ficha-vacio{font-size:12.5px;color:var(--soft)}
+  .ficha-sub{font-size:12px;color:var(--soft);margin-top:2px;line-height:1.45}
   /* ---- Recepción ---- */
   .rec-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:11px;
     box-shadow:0 1px 4px rgba(40,30,80,.06)}
@@ -636,7 +668,7 @@ function App(){
 /* ---------- Flujo de reservar (multi-persona) ---------- */
 function Reservar({areas,servicios,colorArea}){
   const MAXSERV=5;
-  const nuevaPersona=()=>({nombre:'',tel:'',tipo:'normal',filas:[{area:'',sid:''}],promoNum:''});
+  const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',tel:'',tipo:'normal',filas:[{area:'',sid:''}],promoNum:''});
   const [dia,setDia]=useState(hoy());
   const [hora,setHora]=useState('');
   const [personas,setPersonas]=useState([nuevaPersona()]);
@@ -644,8 +676,10 @@ function Reservar({areas,servicios,colorArea}){
   const [enviando,setEnviando]=useState(false);
   const [aviso,setAviso]=useState('');
   const [hecho,setHecho]=useState(null);
+  const [clientas,setClientas]=useState(null);
 
   useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getPromos'); setPromos(r.ok?r.promos:[]); }catch(e){ setPromos([]); } })(); },[]);
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getClientes'); setClientas(r.ok?(r.clientes||[]):[]); }catch(e){ setClientas([]); } })(); },[]);
   const svcPorId=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
   const money=n=>'$'+Math.round(n||0);
 
@@ -666,6 +700,11 @@ function Reservar({areas,servicios,colorArea}){
     return {...p,tipo:t,filas}; }));
   const addPersona=()=>setPersonas(ps=>[...ps,nuevaPersona()]);
   const delPersona=i=>setPersonas(ps=>ps.length>1?ps.filter((_,j)=>j!==i):ps);
+  const clientasFiltradas=(q)=>{ const t=String(q||'').toLowerCase().trim(); if(!t) return [];
+    return (clientas||[]).filter(c=>String(c.nombre||'').toLowerCase().indexOf(t)>=0 || String(c.codigo||'').toLowerCase().indexOf(t)>=0 || String(c.telefono||'').indexOf(t)>=0); };
+  const pickCliente=async(pi,c)=>{ setPer(pi,{cliente_id:c.codigo,nombre:c.nombre,_cli:c,hist:null,q:'',open:''});
+    try{ const r=await apiGet('getHistorial',{codigo:c.codigo}); setPer(pi,{hist:(r&&r.ok)?r:{visitas:[],fichas:{facial:[],pestanas:[]}}}); }
+    catch(e){ setPer(pi,{hist:{visitas:[],fichas:{facial:[],pestanas:[]}}}); } };
 
   const promoDe=num=>(promos||[]).find(p=>p.numero===num)||null;
   const serviciosDe=p=> p.tipo==='promo' ? (promoDe(p.promoNum)?promoDe(p.promoNum).servicios:[]) : p.filas.map(f=>f.sid).filter(Boolean);
@@ -677,10 +716,11 @@ function Reservar({areas,servicios,colorArea}){
     if(!hora) return setAviso('Elige la hora');
     const payload=[];
     for(let i=0;i<personas.length;i++){ const p=personas[i];
-      if(!p.nombre.trim()) return setAviso('Falta el nombre de la persona '+(i+1));
+      if(p.modo==='existente' && !p.cliente_id) return setAviso('Elige la clienta existente en la persona '+(i+1));
+      if(p.modo==='nueva' && !p.nombre.trim()) return setAviso('Falta el nombre de la persona '+(i+1));
       const sv=serviciosDe(p);
       if(!sv.length) return setAviso((p.tipo==='promo'?'Elige una promo en':'Elige al menos un servicio en')+' la persona '+(i+1));
-      payload.push({cliente_nombre:p.nombre.trim(),telefono:p.tel.trim(),servicios:sv});
+      payload.push({cliente_id:p.cliente_id||'',cliente_nombre:(p.nombre||'').trim(),telefono:(p.tel||'').trim(),servicios:sv});
     }
     setEnviando(true); setAviso('');
     try{ const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
@@ -725,8 +765,46 @@ function Reservar({areas,servicios,colorArea}){
       {personas.map((p,pi)=>(
         <div className="pcard" key={pi}>
           <div className="pcard-h"><span>Persona {pi+1}</span>{personas.length>1 && <button className="srow-x" onClick={()=>delPersona(pi)} aria-label="Quitar persona">×</button>}</div>
-          <input className="inp" placeholder="Nombre de la clienta" value={p.nombre} onChange={e=>setPer(pi,{nombre:e.target.value})} />
-          <input className="inp" type="tel" placeholder="Teléfono (opcional)" value={p.tel} onChange={e=>setPer(pi,{tel:e.target.value})} />
+          <div className="cli-toggle">
+            <button className={"cli-tg"+(p.modo==='existente'?' on':'')} onClick={()=>setPer(pi,{modo:'existente'})}>Clienta Existente</button>
+            <button className={"cli-tg"+(p.modo==='nueva'?' on':'')} onClick={()=>setPer(pi,{modo:'nueva',cliente_id:'',_cli:null,hist:null})}>+ Clienta Nueva</button>
+          </div>
+          {p.modo==='nueva' ? <>
+            <input className="inp" placeholder="Nombre de la clienta" value={p.nombre} onChange={e=>setPer(pi,{nombre:e.target.value})} />
+            <input className="inp" type="tel" placeholder="Teléfono (opcional)" value={p.tel} onChange={e=>setPer(pi,{tel:e.target.value})} />
+          </> : (!p.cliente_id ? <div className="cli-pick">
+            <input className="inp" placeholder={clientas===null?'Cargando clientas…':'Buscar por nombre, código o teléfono…'} value={p.q||''} onChange={e=>setPer(pi,{q:e.target.value})} />
+            {(p.q||'').trim().length>=2 && <div className="cli-results">
+              {clientasFiltradas(p.q).slice(0,8).map(c=>
+                <button key={c.codigo} className="cli-res" onClick={()=>pickCliente(pi,c)}>
+                  <b>{c.nombre}{c.top?' ⭐':''}</b><span>{c.codigo}{c.telefono?(' · '+c.telefono):''}</span>
+                </button>)}
+              {clientasFiltradas(p.q).length===0 && <div className="cli-res-empty">Sin resultados para "{p.q}"</div>}
+            </div>}
+          </div> : (function(){ const c=p._cli||{}; const h=p.hist;
+            const fac=(h&&h.fichas)?(h.fichas.facial||[]):[]; const pes=(h&&h.fichas)?(h.fichas.pestanas||[]):[]; const cej=(h&&h.fichas)?(h.fichas.cejas||[]):[];
+            const FICHAS=[['facial','🧖 Ficha facial',fac,c.obs_facial],['pestanas','👁 Ficha pestañas',pes,c.obs_pestanas],['cejas','✏️ Ficha pigmento / cejas',cej,c.obs_cejas]];
+            return <div className="cli-mini">
+              <div className="cli-mini-nom">{c.nombre}{c.top&&<span className="cli-top sm">⭐</span>}<button className="cli-cambiar" onClick={()=>setPer(pi,{cliente_id:'',nombre:'',_cli:null,hist:null,q:'',open:''})}>cambiar</button></div>
+              <div className="cli-mini-meta">Código {c.codigo}</div>
+              <div className="cli-mini-stats"><span>Última visita<br/><b>{c.ultima_visita?fechaCorta(c.ultima_visita):'—'}</b></span><span>Total visitas<br/><b>{c.total_visitas||0}</b></span></div>
+              <div className="cli-mini-lbl">Fichas</div>
+              {h===null ? <div className="cli-res-empty">Cargando fichas…</div> :
+               FICHAS.map(([key,label,items,obs])=>(
+                <div key={key} className="ficha-acc">
+                  <button className="ficha-accb" onClick={()=>setPer(pi,{open:p.open===key?'':key})}>
+                    <span>{label}</span><span className="ficha-cnt">{items&&items.length?items.length:''} {p.open===key?'▴':'▾'}</span>
+                  </button>
+                  {p.open===key && <div className="ficha-body">
+                    {obs?<div className="ficha-obs"><b>Obs. área:</b> {obs}</div>:null}
+                    {(!items||!items.length) ? <div className="ficha-vacio">Sin ficha registrada.</div> : <FichaDetalle tipo={key} items={items}/>}
+                  </div>}
+                </div>
+              ))}
+              <div className="cli-mini-lbl">Observaciones</div>
+              <div className="ficha-obs gen">{c.observaciones||'Sin observaciones registradas.'}</div>
+            </div>;
+          })())}
           <div className="seg">
             {[['normal','Normal'],['mixto','Mixto'],['especial','Especial'],['promo','Promoción']].map(([k,l])=>
               <button key={k} className={"seg-b"+(p.tipo===k?' on':'')} onClick={()=>cambiarTipo(pi,k)}>{l}</button>)}
@@ -915,6 +993,27 @@ function Recepcion({go, servicios}){
   );
 }
 
+/* ---------- Render de fichas (facial / pestañas / pigmento) ---------- */
+function FichaDetalle({tipo, items}){
+  if(tipo==='facial') return items.map((f,i)=>(
+    <div key={i} className="ficha-it">
+      <b>{f.fecha?fechaCorta(f.fecha):''}</b>{' '}
+      {[f.edad&&(f.edad+' años'), f.sexo, f.tipo_piel&&('Piel '+f.tipo_piel), f.fototipo&&('Fototipo '+f.fototipo)].filter(Boolean).join(' · ')}
+      {f.notas?<div className="ficha-sub">{f.notas}</div>:null}
+    </div>));
+  if(tipo==='pestanas') return items.map((f,i)=>(
+    <div key={i} className="ficha-it">
+      <b>{f.fecha?fechaCorta(f.fecha):''}</b> · {f.estilo}{f.curvatura?(' · '+f.curvatura):''}{f.activa?' · activa':''}
+      {f.observacion?<div className="ficha-sub">{f.observacion}</div>:null}
+    </div>));
+  return items.map((f,i)=>(
+    <div key={i} className="ficha-it">
+      <b>{f.fecha?fechaCorta(f.fecha):''}</b> · {f.sesion}{f.color?(' · '+f.color):''}{f.aguja?(' · aguja '+f.aguja):''}{f.responsable?(' · '+f.responsable):''}
+      {f.proximo_retoque?<div className="ficha-sub">Próx. retoque: {fechaCorta(f.proximo_retoque)}</div>:null}
+      {f.observaciones?<div className="ficha-sub">{f.observaciones}</div>:null}
+    </div>));
+}
+
 /* ---------- Clientas · directorio + ficha + historial (NexServ) ---------- */
 function Clientas({go}){
   const [lista,setLista]=useState(null);
@@ -946,8 +1045,9 @@ function Clientas({go}){
   if (sel){
     const obs=[['General',sel.observaciones],['Cejas',sel.obs_cejas],['Depilación',sel.obs_depilacion],['Pestañas',sel.obs_pestanas],['Facial',sel.obs_facial]].filter(x=>s(x[1]));
     const v=hist&&hist.visitas?hist.visitas:[];
-    const fFac=hist&&hist.fichas?hist.fichas.facial:[];
-    const fPes=hist&&hist.fichas?hist.fichas.pestanas:[];
+    const fFac=hist&&hist.fichas?(hist.fichas.facial||[]):[];
+    const fPes=hist&&hist.fichas?(hist.fichas.pestanas||[]):[];
+    const fCej=hist&&hist.fichas?(hist.fichas.cejas||[]):[];
     return (
       <div className="fade">
         <button className="back" onClick={()=>{setSel(null);setHist(null);}}>‹ Volver a clientas</button>
@@ -977,25 +1077,18 @@ function Clientas({go}){
          ))}
 
         {fFac.length>0 && <>
-          <div className="cli-sec">Fichas faciales</div>
-          {fFac.map((f,i)=>(
-            <div key={i} className="cli-visita">
-              <div className="cli-v-top"><span className="cli-v-srv">{f.servicio||'Facial'}</span><span className="cli-v-meta">{f.fecha?fechaCorta(f.fecha):''}</span></div>
-              {f.procedimiento?<div className="cli-v-meta"><b>Proc:</b> {f.procedimiento}</div>:null}
-              {f.productos?<div className="cli-v-meta"><b>Productos:</b> {f.productos}</div>:null}
-              {f.observaciones?<div className="cli-v-meta"><b>Obs:</b> {f.observaciones}</div>:null}
-            </div>
-          ))}
+          <div className="cli-sec">Ficha facial</div>
+          <div className="cli-visita"><FichaDetalle tipo="facial" items={fFac}/></div>
         </>}
 
         {fPes.length>0 && <>
-          <div className="cli-sec">Fichas de pestañas</div>
-          {fPes.map((f,i)=>(
-            <div key={i} className="cli-visita">
-              <div className="cli-v-top"><span className="cli-v-srv">{f.estilo||'Pestañas'}{f.curvatura?(' · '+f.curvatura):''}</span><span className="cli-v-meta">{f.fecha?fechaCorta(f.fecha):''}</span></div>
-              {f.observacion?<div className="cli-v-meta">{f.observacion}</div>:null}
-            </div>
-          ))}
+          <div className="cli-sec">Ficha pestañas</div>
+          <div className="cli-visita"><FichaDetalle tipo="pestanas" items={fPes}/></div>
+        </>}
+
+        {fCej.length>0 && <>
+          <div className="cli-sec">Ficha pigmento / cejas</div>
+          <div className="cli-visita"><FichaDetalle tipo="cejas" items={fCej}/></div>
         </>}
       </div>
     );
