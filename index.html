@@ -434,6 +434,7 @@
   .menu-go{width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:15px;color:var(--ink);
     padding:12px;cursor:pointer;border-radius:10px;display:flex;align-items:center;gap:8px}
   .menu-go:active{background:rgba(0,0,0,.05)}
+  .menu-ic{width:20px;height:20px;flex:0 0 auto;color:var(--brand)}
 
   /* ---- Permisos y bloqueos ---- */
   .perm-intro{font-size:13px;color:var(--soft);line-height:1.45;margin:2px 2px 14px}
@@ -654,9 +655,9 @@ function App(){
                 <button className={"sw-toggle"+(asistenteOn?' on':'')} onClick={toggleAsis} aria-label="Activar o desactivar asistente"><span className="sw-knob"></span></button>
               </div>
               <div className="menu-sep"></div>
-              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}>🔒 Permisos y bloqueos</button>
-              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}>👥 Recepción · tickets</button>
-              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('clientas');}}>👤 Clientas</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Permisos y bloqueos</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 5v14" strokeDasharray="2 2"/></svg>Recepción · tickets</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('clientas');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>Clientas</button>
               <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
             </div>
