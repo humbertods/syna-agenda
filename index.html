@@ -777,7 +777,7 @@ function Previsualizacion({dia, servicio, onClose, onConfirm}){
 
 function Reservar({areas,servicios,colorArea}){
   const MAXSERV=5;
-  const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',tel:'',tipo:'normal',filas:[{area:'',sid:''}],promoNum:''});
+  const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',tel:'',filas:[{area:'',sid:''}]});
   const [dia,setDia]=useState(hoy());
   const [hora,setHora]=useState('');
   const [personas,setPersonas]=useState([nuevaPersona()]);
@@ -804,10 +804,7 @@ function Reservar({areas,servicios,colorArea}){
   const setFila=(pi,fi,patch)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:{...p,filas:p.filas.map((f,k)=>k===fi?{...f,...patch}:f)}));
   const addFila=pi=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:(p.filas.length>=MAXSERV?p:{...p,filas:[...p.filas,{area:'',sid:''}]})));
   const delFila=(pi,fi)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:(p.filas.length>1?{...p,filas:p.filas.filter((_,k)=>k!==fi)}:p)));
-  const cambiarTipo=(pi,t)=>setPersonas(ps=>ps.map((p,j)=>{ if(j!==pi)return p; let filas=p.filas;
-    if(t==='normal')filas=[filas[0]||{area:'',sid:''}];
-    else if(t==='mixto'||t==='especial'){filas=[...filas];while(filas.length<2)filas.push({area:'',sid:''});}
-    return {...p,tipo:t,filas}; }));
+
   const addPersona=()=>setPersonas(ps=>[...ps,nuevaPersona()]);
   const delPersona=i=>setPersonas(ps=>ps.length>1?ps.filter((_,j)=>j!==i):ps);
   const clientasFiltradas=(q)=>{ const t=String(q||'').toLowerCase().trim(); if(!t) return [];
@@ -817,10 +814,8 @@ function Reservar({areas,servicios,colorArea}){
     catch(e){ setPer(pi,{hist:{visitas:[],fichas:{facial:[],pestanas:[]}}}); } };
 
   const promoDe=num=>(promos||[]).find(p=>p.numero===num)||null;
-  const serviciosDe=p=> p.tipo==='promo' ? [] : p.filas.map(f=>f.sid).filter(Boolean);
-  const totalPrecio=personas.reduce((s,p)=> s + (p.tipo==='promo'
-      ? (promoDe(p.promoNum)?promoDe(p.promoNum).precio:0)
-      : serviciosDe(p).reduce((a,id)=>a+((svcPorId[id]&&+svcPorId[id].precio)||0),0)),0);
+  const filaPrecio=f=> f.area==='__promo__' ? ((promoDe(f.sid)&&promoDe(f.sid).precio)||0) : ((svcPorId[f.sid]&&+svcPorId[f.sid].precio)||0);
+  const totalPrecio=personas.reduce((s,p)=> s + p.filas.reduce((a,f)=>a+(f.sid?filaPrecio(f):0),0),0);
 
   const agendar=async()=>{
     if(!hora) return setAviso('Elige la hora');
@@ -828,14 +823,10 @@ function Reservar({areas,servicios,colorArea}){
     for(let i=0;i<personas.length;i++){ const p=personas[i];
       if(p.modo==='existente' && !p.cliente_id) return setAviso('Elige la clienta existente en la persona '+(i+1));
       if(p.modo==='nueva' && !p.nombre.trim()) return setAviso('Falta el nombre de la persona '+(i+1));
-      if(p.tipo==='promo'){
-        if(!p.promoNum) return setAviso('Elige la promo en la persona '+(i+1));
-        payload.push({cliente_id:p.cliente_id||'',cliente_nombre:(p.nombre||'').trim(),telefono:(p.tel||'').trim(),promo:p.promoNum});
-        continue;
-      }
-      const sv=serviciosDe(p);
-      if(!sv.length) return setAviso('Elige al menos un servicio en la persona '+(i+1));
-      payload.push({cliente_id:p.cliente_id||'',cliente_nombre:(p.nombre||'').trim(),telefono:(p.tel||'').trim(),servicios:sv});
+      const items=[];
+      for(const f of p.filas){ if(!f.sid)continue; items.push(f.area==='__promo__'?{k:'p',num:f.sid}:{k:'s',id:f.sid}); }
+      if(!items.length) return setAviso('Elige al menos un servicio en la persona '+(i+1));
+      payload.push({cliente_id:p.cliente_id||'',cliente_nombre:(p.nombre||'').trim(),telefono:(p.tel||'').trim(),items});
     }
     setEnviando(true); setAviso('');
     try{ const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
@@ -920,41 +911,34 @@ function Reservar({areas,servicios,colorArea}){
               <div className="ficha-obs gen">{c.observaciones||'Sin observaciones registradas.'}</div>
             </div>;
           })())}
-          <div className="seg">
-            {[['normal','Normal'],['mixto','Mixto'],['especial','Especial'],['promo','Promoción']].map(([k,l])=>
-              <button key={k} className={"seg-b"+(p.tipo===k?' on':'')} onClick={()=>cambiarTipo(pi,k)}>{l}</button>)}
-          </div>
-
-          {p.tipo!=='promo' ? <>
-            {p.filas.map((f,fi)=>(
-              <div className="srow" key={fi}>
-                <div className="srow-h"><span>Servicio {fi+1}</span>{p.filas.length>1 && <button className="srow-x" onClick={()=>delFila(pi,fi)} aria-label="Quitar">×</button>}</div>
-                <select className="sel" value={f.area} onChange={e=>setFila(pi,fi,{area:e.target.value,sid:''})}>
-                  <option value="">Área…</option>
-                  {areas.map(a=><option key={a.area} value={a.area}>{a.area}</option>)}
-                </select>
-                <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setFila(pi,fi,{sid:e.target.value})}>
-                  <option value="">{f.area?'Especifique…':'Elige área primero'}</option>
-                  {servicios.filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio} · {money(s.precio)} · {s.duracion}min</option>)}
-                </select>
-              </div>
-            ))}
-            {p.filas.length<MAXSERV
-              ? <button className="addx" onClick={()=>addFila(pi)}>+ Agregar servicio extra ({p.filas.length}/{MAXSERV})</button>
-              : <div className="cap-note">Máximo {MAXSERV} servicios por persona</div>}
-          </> : <>
-            <select className="sel" value={p.promoNum} onChange={e=>setPer(pi,{promoNum:e.target.value})}>
-              <option value="">{promos===null?'Cargando promos…':((promos||[]).length?'Elige una promo…':'Sin promos esta semana')}</option>
-              {(promos||[]).map(pr=><option key={pr.numero} value={pr.numero}>#{pr.numero} · {pr.nombre} · {money(pr.precio)}</option>)}
-            </select>
-            {promoDe(p.promoNum) && (function(){ const pr=promoDe(p.promoNum); return <div className="promo-box">
-              <div className="promo-t">Incluye</div>
-              <div className="promo-inc">{pr.incluye}</div>
-              <div className="promo-precio"><span className="promo-now">{money(pr.precio)}</span>{pr.regular>pr.precio?<span className="promo-reg">{money(pr.regular)}</span>:null}{pr.descuento>0?<span className="promo-off">-{pr.descuento}%</span>:null}</div>
-              {pr.hasta?<div className="promo-vig">Vigente hasta {fechaCorta(pr.hasta)}</div>:null}
-            </div>; })()}
-            {(promos!==null && !(promos||[]).length) && <div className="promo-hint">No hay promos vigentes esta semana en NexServ.</div>}
-          </>}
+          {p.filas.map((f,fi)=>(
+            <div className="srow" key={fi}>
+              <div className="srow-h"><span>Servicio {fi+1}</span>{p.filas.length>1 && <button className="srow-x" onClick={()=>delFila(pi,fi)} aria-label="Quitar">×</button>}</div>
+              <select className="sel" value={f.area} onChange={e=>setFila(pi,fi,{area:e.target.value,sid:''})}>
+                <option value="">Área…</option>
+                {areas.map(a=><option key={a.area} value={a.area}>{a.area}</option>)}
+                <option value="__promo__">Promociones</option>
+              </select>
+              {f.area==='__promo__'
+                ? <select className="sel" value={f.sid} onChange={e=>setFila(pi,fi,{sid:e.target.value})}>
+                    <option value="">{promos===null?'Cargando promos…':((promos||[]).length?'Elige una promo…':'Sin promos esta semana')}</option>
+                    {(promos||[]).map(pr=><option key={pr.numero} value={pr.numero}>#{pr.numero} · {pr.nombre} · {money(pr.precio)}</option>)}
+                  </select>
+                : <select className="sel" value={f.sid} disabled={!f.area} onChange={e=>setFila(pi,fi,{sid:e.target.value})}>
+                    <option value="">{f.area?'Especifique…':'Elige área primero'}</option>
+                    {servicios.filter(s=>s.area===f.area).map(s=><option key={s.id} value={s.id}>{s.servicio} · {money(s.precio)} · {s.duracion}min</option>)}
+                  </select>}
+              {f.area==='__promo__' && promoDe(f.sid) && (function(){ const pr=promoDe(f.sid); return <div className="promo-box">
+                <div className="promo-t">Incluye</div>
+                <div className="promo-inc">{pr.incluye}</div>
+                <div className="promo-precio"><span className="promo-now">{money(pr.precio)}</span>{pr.regular>pr.precio?<span className="promo-reg">{money(pr.regular)}</span>:null}{pr.descuento>0?<span className="promo-off">-{pr.descuento}%</span>:null}</div>
+                {pr.hasta?<div className="promo-vig">Vigente hasta {fechaCorta(pr.hasta)}</div>:null}
+              </div>; })()}
+            </div>
+          ))}
+          {p.filas.length<MAXSERV
+            ? <button className="addx" onClick={()=>addFila(pi)}>+ Agregar servicio ({p.filas.length}/{MAXSERV})</button>
+            : <div className="cap-note">Máximo {MAXSERV} servicios por persona</div>}
         </div>
       ))}
 
@@ -964,7 +948,7 @@ function Reservar({areas,servicios,colorArea}){
       {aviso && <div className="aviso">{aviso}</div>}
       <button className="btn-prev" onClick={()=>{
         let svc=null;
-        for(const p of personas){ if(p.tipo==='promo')continue; for(const f of p.filas){ if(f.sid){svc=svcPorId[f.sid];break;} } if(svc)break; }
+        for(const p of personas){ for(const f of p.filas){ if(f.area!=='__promo__' && f.sid){svc=svcPorId[f.sid];break;} } if(svc)break; }
         if(!svc) return setAviso('Elige al menos un servicio para previsualizar los espacios');
         setAviso(''); setPreview(svc);
       }}>Previsualización · ver espacios</button>
