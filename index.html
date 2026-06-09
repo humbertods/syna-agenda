@@ -1719,13 +1719,24 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
   useEffect(()=>{cargar()},[]);
   const accionCita=async(p,tipo)=>{
     const key=p.grupo||(p.ids&&p.ids[0])||p.cliente;
+    const action=tipo==='llego'?'confirmarLlegadaCita':tipo==='cancelar'?'cancelarCitaNex':'atendidaCita';
+    if(!(p.ids&&p.ids.length)){ alert('Esta cita no tiene ids; no se puede '+action+'.'); return; }
     setActState(s=>({...s,[key]:'busy'}));
     try{
-      const action=tipo==='llego'?'confirmarLlegadaCita':tipo==='cancelar'?'cancelarCitaNex':'atendidaCita';
-      await apiPost(action,{ids:p.ids||[],nex:p.nex||''});
+      const r=await apiPost(action,{ids:p.ids||[],nex:p.nex||''});
+      if(!r || r.ok!==true){
+        console.warn('accionCita',action,'respuesta inesperada:',r);
+        alert('No se pudo completar la acción.\n\n'+JSON.stringify(r));
+        setActState(s=>({...s,[key]:''}));
+        return;
+      }
       setActState(s=>({...s,[key]:tipo==='cancelar'?'cancelled':'done'}));
       setTimeout(cargar,1200);
-    }catch(e){ setActState(s=>({...s,[key]:''})); }
+    }catch(e){
+      console.error('accionCita error:',e);
+      alert('Error de conexión al ejecutar '+action+'.');
+      setActState(s=>({...s,[key]:''}));
+    }
   };
   const esCEO = (rol||'').toLowerCase()==='admin';
   if(err) return <div className="empty">{err}</div>;
