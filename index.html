@@ -654,10 +654,12 @@ const ESTADOS={confirmada:['#EAF3DE','#3B6D11'],pendiente:['#FAEEDA','#854F0B'],
 
 /* ---------- App ---------- */
 function App(){
-  const ss=(k,d='')=>{ try{ return sessionStorage.getItem(k)||d; }catch(e){ return d; } };
-  const [authed,setAuthed]=useState(()=>ss('syna_auth')==='1');
-  const [rol,setRol]=useState(()=>ss('syna_rol'));
-  const [nombre,setNombre]=useState(()=>ss('syna_nombre'));
+  const storeGet=(k,d='')=>{ try{ return localStorage.getItem(k)||d; }catch(e){ return d; } };
+  const storeSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+  const storeRemove=(keys)=>{ try{ keys.forEach(k=>localStorage.removeItem(k)); }catch(e){} };
+  const [authed,setAuthed]=useState(()=>storeGet('syna_auth')==='1');
+  const [rol,setRol]=useState(()=>storeGet('syna_rol'));
+  const [nombre,setNombre]=useState(()=>storeGet('syna_nombre'));
   const [tab,setTab]=useState('principal');
   const [areas,setAreas]=useState([]);
   const [servicios,setServicios]=useState([]);
@@ -666,7 +668,7 @@ function App(){
   const [refreshKey,setRefreshKey]=useState(0);
   const [refreshing,setRefreshing]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
-  const [asistenteOn,setAsistenteOn]=useState(()=>ss('syna_asis','1')!=='0');
+  const [asistenteOn,setAsistenteOn]=useState(()=>storeGet('syna_asis','1')!=='0');
 
   useEffect(()=>{ if(!authed) return; (async()=>{
     try{
@@ -681,17 +683,17 @@ function App(){
   const colorArea = nm => (areas.find(a=>a.area===nm)||{}).color || '#999';
   const go = t => setTab(t);
   const onLogin = (r) => {
-    try{ sessionStorage.setItem('syna_auth','1');
-         sessionStorage.setItem('syna_rol', (r&&r.rol)||'');
-         sessionStorage.setItem('syna_nombre', (r&&r.nombre)||''); }catch(e){}
+    storeSet('syna_auth','1');
+    storeSet('syna_rol', (r&&r.rol)||'');
+    storeSet('syna_nombre', (r&&r.nombre)||'');
     setRol((r&&r.rol)||''); setNombre((r&&r.nombre)||''); setTab('principal'); setAuthed(true);
   };
   const salir = () => {
-    try{ sessionStorage.removeItem('syna_auth'); sessionStorage.removeItem('syna_rol'); sessionStorage.removeItem('syna_nombre'); }catch(e){}
+    storeRemove(['syna_auth','syna_rol','syna_nombre']);
     setAuthed(false);
   };
   const onRefresh = () => { setRefreshing(true); setRefreshKey(k=>k+1); setTimeout(()=>setRefreshing(false),700); };
-  const toggleAsis = () => { const nv=!asistenteOn; setAsistenteOn(nv); try{ sessionStorage.setItem('syna_asis', nv?'1':'0'); }catch(e){} if(!nv && tab==='asistente') setTab('principal'); };
+  const toggleAsis = () => { const nv=!asistenteOn; setAsistenteOn(nv); storeSet('syna_asis', nv?'1':'0'); if(!nv && tab==='asistente') setTab('principal'); };
 
   if(!authed) return <div id="app"><Login onLogin={onLogin}/></div>;
 
@@ -1535,6 +1537,11 @@ function Agenda({servicios,colorArea}){
   const TIPOCOL={ cejas_long:['#8DCBA6','#1F4D33'], cejas_short:['#C6E6D2','#2C5E40'], depilacion:['#ECC08A','#6E4410'],
     facial:['#AEC9E8','#234C7A'], pestanas:['#ECE08F','#6E6411'], permanente:['#D8BBE0','#5A3168'] };
   const LEYENDA=[['cejas_long','Cejas +1h'],['cejas_short','Cejas −1h'],['depilacion','Depil.'],['facial','Facial'],['pestanas','Pestañas'],['permanente','Perm.']];
+  const layoutSolapes=list=>list.map(c=>{
+    const sol=list.filter(o=>o.ini<c.fin && c.ini<o.fin).sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre).localeCompare(String(b.cliente_nombre)));
+    const n=Math.max(1,sol.length), idx=Math.max(0,sol.indexOf(c));
+    return {...c,_slotN:n,_slotI:idx};
+  });
 
   return (
     <div className="fade">
@@ -1580,25 +1587,27 @@ function Agenda({servicios,colorArea}){
                    <div className="tl-gutter">
                      {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-franjaIni)*PPM}}>{hLbl(h)}</div>)}
                    </div>
-                   {COLS.map(col=>(
-                     <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
-                       {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
-                       {citas.filter(c=>colDe(c.svc)===col && c.fin>franjaIni && c.ini<franjaFin).map(c=>{
-                         const cc=TIPOCOL[tipoDe(c.svc)];
-                         const top=Math.max(0,(c.ini-franjaIni)*PPM);
-                         const hgt=Math.max(22,(Math.min(c.fin,franjaFin)-Math.max(c.ini,franjaIni))*PPM);
-                         const pend=(c.estado||'').toLowerCase()!=='confirmada';
-                         const abonado=c.abono && String(c.abono)!=='' && String(c.abono)!=='0';
-                         return (
-                           <button key={c.id} className={"tl-pill"+(pend?' pend':'')} style={{top,height:hgt,background:cc[0],color:cc[1]}} onClick={()=>setAccion(c)}>
-                             <div className="tl-pill-t">{abonado?'💵 ':''}{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
-                             {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   ))}
-                 </div>
+                    {COLS.map(col=>{
+                      const colCitas=layoutSolapes(citas.filter(c=>colDe(c.svc)===col && c.fin>franjaIni && c.ini<franjaFin));
+                      return <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
+                        {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
+                        {colCitas.map((c,i)=>{
+                          const cc=TIPOCOL[tipoDe(c.svc)];
+                          const top=Math.max(0,(c.ini-franjaIni)*PPM);
+                          const hgt=Math.max(22,(Math.min(c.fin,franjaFin)-Math.max(c.ini,franjaIni))*PPM);
+                          const pend=(c.estado||'').toLowerCase()!=='confirmada';
+                          const abonado=c.abono && String(c.abono)!=='' && String(c.abono)!=='0';
+                          const w=(148/c._slotN)-4, l=4+(148/c._slotN)*c._slotI;
+                          return (
+                            <button key={c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`} className={"tl-pill"+(pend?' pend':'')} style={{top,height:hgt,left:l,width:w,right:'auto',background:cc[0],color:cc[1]}} onClick={()=>setAccion(c)}>
+                              <div className="tl-pill-t">{abonado?'💵 ':''}{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
+                              {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    })}
+                  </div>
                </div>
              </div>
              <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar · desliza para ver las columnas →</div>
