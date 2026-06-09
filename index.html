@@ -790,6 +790,12 @@ function Previsualizacion({dia, servicio, onClose, onConfirm}){
            <div className="prev-lbl">Espacios disponibles{slotsF.length?(' · '+slotsF.length):''}</div>
            {slotsF.length===0 ? <div className="empty" style={{padding:'10px 0'}}>No hay espacios libres en esta franja.</div> :
             <div className="prev-chips">{slotsF.map(t=><button key={t} className={"prev-chip"+(sel===t?' on':'')} onClick={()=>setSel(t)}>{t}</button>)}</div>}
+           {disp.manual && <div style={{marginTop:14}}>
+             <div className="prev-lbl" style={{marginBottom:6}}>Otro horario (manual)</div>
+             <input type="time" step="300" value={/^\d{2}:\d{2}$/.test(sel)?sel:''} onChange={e=>setSel(e.target.value)}
+               style={{padding:'10px 12px',border:'1.5px solid var(--line,#ddd)',borderRadius:10,fontSize:15,background:'var(--surface,#fff)',color:'inherit'}} />
+             <div className="muted" style={{fontSize:12,marginTop:5}}>Para brow/pigmento puedes elegir una hora exacta distinta a las de arriba.</div>
+           </div>}
          </>}
         <button className="prev-confirm" disabled={!sel} onClick={()=>onConfirm(sel)}>{sel?('Confirmar horario · '+sel):'Elige un espacio'}</button>
       </div>
