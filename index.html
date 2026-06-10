@@ -1548,14 +1548,15 @@ function Agenda({servicios,colorArea}){
   const baseHourH=60*PPM, ticketH=27;
   const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
   const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
-  const tipoDe=svc=>{ if(!svc)return 'cejas_short';
-    const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
+  const tipoDe=c=>{ const svc=c&&c.svc?c.svc:c; if(!svc)return 'cejas_short';
+    const areaReserva=(c&&c.area?c.area:'').toLowerCase();
+    const a=(areaReserva || svc.area || '').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
     if(g.indexOf('permanente')>=0 || n.indexOf('efecto polvo')>=0) return 'permanente';
     if(a==='facial') return 'facial';
     if(a==='pestañas') return 'pestanas';
     if(a==='depilaciones' || g.indexOf('depila')>=0 || n.indexOf('depila')>=0 || n.indexOf('bikini')>=0 || n.indexOf('axila')>=0) return 'depilacion';
     return dur>60?'cejas_long':'cejas_short'; };
-  const colDe=svc=>{ const t=tipoDe(svc);
+  const colDe=c=>{ const t=tipoDe(c);
     return t==='permanente'?'Permanentes': t==='facial'?'Facial': t==='pestanas'?'Pestañas':'Cejas'; };
   const COLS=['Cejas','Facial','Pestañas','Permanentes'];
   const COLWASH={Cejas:'#EAF5EE',Facial:'#EAF1FA','Pestañas':'#FAF7E6',Permanentes:'#F6EFF8'};
@@ -1570,7 +1571,7 @@ function Agenda({servicios,colorArea}){
     return 'normal'; };
   const toggleCol=col=>setColsCerradas(m=>({...m,[col]:!m[col]}));
   const visiblesPorCol={};
-  COLS.forEach(col=>{ visiblesPorCol[col]=citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c)); });
+  COLS.forEach(col=>{ visiblesPorCol[col]=citas.filter(c=>colDe(c)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c)); });
   const horaBase=m=>Math.max(franjaIni,Math.floor(m/60)*60);
   const horaCounts={};
   horas.forEach(h=>{ horaCounts[h*60]=0; });
@@ -1645,7 +1646,7 @@ function Agenda({servicios,colorArea}){
                         {colCitas.map((c,i)=>{
                           const top=c._top;
                           const st=estadoClase(c), activo=st==='proceso';
-                          const serv=c.svc?c.svc.servicio:c.servicio_id;
+                          const serv=(c.svc && String(c.svc.area||'')===String(c.area||''))?c.svc.servicio:c.servicio_id;
                           const key=c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`;
                           return (
                             <button key={key} className={"tl-pill st-"+st} style={{top}} onClick={()=>setAccion(c)}>
