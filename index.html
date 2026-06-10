@@ -1541,7 +1541,7 @@ function Agenda({servicios,colorArea}){
   const franjaIni = (franja==='tarde')?CORTE:abre;
   const franjaFin = (franja==='manana')?CORTE:cierra;
   const PPM = (franja==='dia')?1.35:2.3;
-  const tlH=Math.max(120,(franjaFin-franjaIni)*PPM);
+  const baseTlH=Math.max(120,(franjaFin-franjaIni)*PPM);
   const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
   const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
   const tipoDe=svc=>{ if(!svc)return 'cejas_short';
@@ -1564,14 +1564,19 @@ function Agenda({servicios,colorArea}){
     if(e==='cancelada') return 'cancelada';
     if(e==='pendiente') return 'pendiente';
     return 'normal'; };
-  const layoutLineas=list=>{ const lanes=[];
-    return list.slice().sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||''))).map(c=>{
-      let lane=lanes.findIndex(fin=>fin<=c.ini); if(lane<0){lane=lanes.length; lanes.push(0);}
-      lanes[lane]=Math.max(c.fin,c.ini+15);
-      return {...c,_lane:lane};
+  const layoutLineas=list=>{ let nextTop=0;
+    const items=list.slice().sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||''))).map(c=>{
+      const byHour=Math.max(0,(c.ini-franjaIni)*PPM);
+      const top=Math.max(byHour,nextTop);
+      nextTop=top+27;
+      return {...c,_top:top};
     });
+    return { items, height:Math.max(baseTlH,nextTop+8) };
   };
   const toggleCol=col=>setColsCerradas(m=>({...m,[col]:!m[col]}));
+  const colLayouts={};
+  COLS.forEach(col=>{ colLayouts[col]=layoutLineas(citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c))); });
+  const tlH=COLS.reduce((h,col)=>Math.max(h,colLayouts[col].height),baseTlH);
 
   return (
     <div className="fade">
@@ -1619,11 +1624,11 @@ function Agenda({servicios,colorArea}){
                     </div>
                     {COLS.map(col=>{
                       const cerrada=!!colsCerradas[col];
-                      const colCitas=layoutLineas(citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c)));
+                      const colCitas=(colLayouts[col]&&colLayouts[col].items)||[];
                       return <div key={col} className={"tl-col"+(cerrada?' closed':'')} style={{background:COLWASH[col]}}>
                         {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
                         {colCitas.map((c,i)=>{
-                          const top=Math.max(0,(c.ini-franjaIni)*PPM)+(c._lane*26);
+                          const top=c._top;
                           const st=estadoClase(c), activo=st==='proceso';
                           const serv=c.svc?c.svc.servicio:c.servicio_id;
                           const key=c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`;
