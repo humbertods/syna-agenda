@@ -1541,7 +1541,7 @@ function Agenda({servicios,colorArea}){
   const franjaIni = (franja==='tarde')?CORTE:abre;
   const franjaFin = (franja==='manana')?CORTE:cierra;
   const PPM = (franja==='dia')?1.35:2.3;
-  const baseTlH=Math.max(120,(franjaFin-franjaIni)*PPM);
+  const baseHourH=60*PPM, ticketH=27;
   const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
   const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
   const tipoDe=svc=>{ if(!svc)return 'cejas_short';
@@ -1564,19 +1564,30 @@ function Agenda({servicios,colorArea}){
     if(e==='cancelada') return 'cancelada';
     if(e==='pendiente') return 'pendiente';
     return 'normal'; };
-  const layoutLineas=list=>{ let nextTop=0;
-    const items=list.slice().sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||''))).map(c=>{
-      const byHour=Math.max(0,(c.ini-franjaIni)*PPM);
-      const top=Math.max(byHour,nextTop);
-      nextTop=top+27;
-      return {...c,_top:top};
-    });
-    return { items, height:Math.max(baseTlH,nextTop+8) };
-  };
   const toggleCol=col=>setColsCerradas(m=>({...m,[col]:!m[col]}));
+  const visiblesPorCol={};
+  COLS.forEach(col=>{ visiblesPorCol[col]=citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c)); });
+  const horaBase=m=>Math.max(franjaIni,Math.floor(m/60)*60);
+  const horaCounts={};
+  horas.forEach(h=>{ horaCounts[h*60]=0; });
+  COLS.forEach(col=>{
+    const counts={};
+    visiblesPorCol[col].forEach(c=>{ const hb=horaBase(c.ini); counts[hb]=(counts[hb]||0)+1; });
+    Object.keys(counts).forEach(hb=>{ horaCounts[hb]=Math.max(horaCounts[hb]||0,counts[hb]); });
+  });
+  const hourTops={}, hourHeights={}; let acc=0;
+  horas.forEach(h=>{ const hb=h*60; hourTops[hb]=acc; if(hb<franjaFin){ hourHeights[hb]=Math.max(baseHourH,(horaCounts[hb]||0)*ticketH+12); acc+=hourHeights[hb]; } });
+  const tlH=Math.max(120,acc);
+  const layoutLineas=list=>{ const usados={};
+    const items=list.slice().sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||''))).map(c=>{
+      const hb=horaBase(c.ini), idx=usados[hb]||0;
+      usados[hb]=idx+1;
+      return {...c,_top:(hourTops[hb]||0)+6+idx*ticketH};
+    });
+    return items;
+  };
   const colLayouts={};
-  COLS.forEach(col=>{ colLayouts[col]=layoutLineas(citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c))); });
-  const tlH=COLS.reduce((h,col)=>Math.max(h,colLayouts[col].height),baseTlH);
+  COLS.forEach(col=>{ colLayouts[col]=layoutLineas(visiblesPorCol[col]); });
 
   return (
     <div className="fade">
@@ -1620,13 +1631,13 @@ function Agenda({servicios,colorArea}){
                   </div>
                   <div className="tl-body" style={{height:tlH}}>
                     <div className="tl-gutter">
-                      {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-franjaIni)*PPM}}>{hLbl(h)}</div>)}
+                      {horas.map(h=><div key={h} className="tl-hlabel" style={{top:hourTops[h*60]||0}}>{hLbl(h)}</div>)}
                     </div>
                     {COLS.map(col=>{
                       const cerrada=!!colsCerradas[col];
-                      const colCitas=(colLayouts[col]&&colLayouts[col].items)||[];
+                      const colCitas=colLayouts[col]||[];
                       return <div key={col} className={"tl-col"+(cerrada?' closed':'')} style={{background:COLWASH[col]}}>
-                        {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
+                        {horas.map(h=><div key={h} className="tl-line" style={{top:hourTops[h*60]||0}}></div>)}
                         {colCitas.map((c,i)=>{
                           const top=c._top;
                           const st=estadoClase(c), activo=st==='proceso';
