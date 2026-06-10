@@ -15,6 +15,7 @@
 <script>
   window.SYNA_API = "https://script.google.com/macros/s/AKfycbxShQ8OsbaXajcaqI-D3_QWWszIkTvoi6b-R3UXqvjmirDCkfvY6rtm60ivXfDsnc8q/exec";
 </script>
+
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -377,11 +378,14 @@
   .ag-libre small{font-weight:500;color:#6E9A45}
   .ag-libre-dot{width:9px;height:9px;border-radius:50%;background:#69B021;flex:0 0 auto}
 
-  /* ---- Agenda timeline por columnas ---- */
+  /* ---- Agenda diaria en lista ---- */
   .ag-resumen{font-size:13px;font-weight:600;color:var(--soft);margin:2px 2px 10px}
   .lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0 2px 12px}
   .lg-i{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--soft);font-weight:600}
   .lg-i i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .ag-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .ag-cita{cursor:pointer}
+  .ag-cita:active{transform:scale(.99)}
   .tl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;background:var(--surface);
     box-shadow:0 1px 4px rgba(40,30,80,.07);padding-bottom:4px}
   .tl-inner{position:relative}
@@ -1499,8 +1503,8 @@ function Agenda({servicios,colorArea}){
     return rows; };
 
   const filaCita=(c)=>(
-    <SwipeRow key={c.id} onReagendar={()=>setReagendar(c)} onEliminar={()=>cancelar(c.id)}>
-      <div className={"ag-cita cat-"+c.cat}>
+    <SwipeRow key={c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}`} onReagendar={()=>setReagendar(c)} onEliminar={()=>cancelar(c.id)}>
+      <div className={"ag-cita cat-"+c.cat} onClick={()=>setAccion(c)}>
         <div className="ag-time">{hhmm(c.ini)}<small>{hhmm(c.fin)}</small></div>
         <div className="ag-info">
           <div className="ag-cli">{c.cliente_nombre||'—'}</div>
@@ -1524,13 +1528,9 @@ function Agenda({servicios,colorArea}){
   const celdas=[]; for(let i=0;i<off;i++)celdas.push(null); for(let d=1;d<=diasMes;d++)celdas.push(d);
   const cambiarMes=delta=>{let m=cur.m+delta,y=cur.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCur({y,m});};
 
-  // ---- timeline por columnas (staff / área) ----
+  // ---- Lista diaria ordenada por hora ----
   const franjaIni = (franja==='tarde')?CORTE:abre;
   const franjaFin = (franja==='manana')?CORTE:cierra;
-  const PPM = (franja==='dia')?1.35:2.3;
-  const tlH=Math.max(120,(franjaFin-franjaIni)*PPM);
-  const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
-  const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
   const tipoDe=svc=>{ if(!svc)return 'cejas_short';
     const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
     if(g.indexOf('permanente')>=0 || n.indexOf('efecto polvo')>=0) return 'permanente';
@@ -1545,11 +1545,9 @@ function Agenda({servicios,colorArea}){
   const TIPOCOL={ cejas_long:['#8DCBA6','#1F4D33'], cejas_short:['#C6E6D2','#2C5E40'], depilacion:['#ECC08A','#6E4410'],
     facial:['#AEC9E8','#234C7A'], pestanas:['#ECE08F','#6E6411'], permanente:['#D8BBE0','#5A3168'] };
   const LEYENDA=[['cejas_long','Cejas +1h'],['cejas_short','Cejas −1h'],['depilacion','Depil.'],['facial','Facial'],['pestanas','Pestañas'],['permanente','Perm.']];
-  const layoutSolapes=list=>list.map(c=>{
-    const sol=list.filter(o=>o.ini<c.fin && c.ini<o.fin).sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre).localeCompare(String(b.cliente_nombre)));
-    const n=Math.max(1,sol.length), idx=Math.max(0,sol.indexOf(c));
-    return {...c,_slotN:n,_slotI:idx};
-  });
+  const citasFranja=citas
+    .filter(c=>c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c))
+    .sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||'')));
 
   return (
     <div className="fade">
@@ -1585,40 +1583,13 @@ function Agenda({servicios,colorArea}){
                {[['manana','Mañana'],['tarde','Tarde'],['dia','Todo el día']].map(([k,l])=>
                  <button key={k} className={"franja-b"+(franja===k?' on':'')} onClick={()=>setFranja(k)}>{l}</button>)}
              </div>
-             <div className="tl-scroll">
-               <div className="tl-inner" style={{minWidth:46+COLS.length*156}}>
-                 <div className="tl-hdr">
-                   <div className="tl-corner"></div>
-                   {COLS.map(c=><div key={c} className="tl-chead">{c}</div>)}
-                 </div>
-                 <div className="tl-body" style={{height:tlH}}>
-                   <div className="tl-gutter">
-                     {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-franjaIni)*PPM}}>{hLbl(h)}</div>)}
-                   </div>
-                    {COLS.map(col=>{
-                      const colCitas=layoutSolapes(citas.filter(c=>colDe(c.svc)===col && c.fin>franjaIni && c.ini<franjaFin));
-                      return <div key={col} className="tl-col" style={{background:COLWASH[col]}}>
-                        {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
-                        {colCitas.map((c,i)=>{
-                          const cc=TIPOCOL[tipoDe(c.svc)];
-                          const top=Math.max(0,(c.ini-franjaIni)*PPM);
-                          const hgt=Math.max(22,(Math.min(c.fin,franjaFin)-Math.max(c.ini,franjaIni))*PPM);
-                          const pend=(c.estado||'').toLowerCase()!=='confirmada';
-                          const abonado=c.abono && String(c.abono)!=='' && String(c.abono)!=='0';
-                          const w=(148/c._slotN)-4, l=4+(148/c._slotN)*c._slotI;
-                          return (
-                            <button key={c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`} className={"tl-pill"+(pend?' pend':'')} style={{top,height:hgt,left:l,width:w,right:'auto',background:cc[0],color:cc[1]}} onClick={()=>setAccion(c)}>
-                              <div className="tl-pill-t">{abonado?'💵 ':''}{hhmm(c.ini)} · {c.cliente_nombre||'—'}</div>
-                              {hgt>=34 && <div className="tl-pill-s">{c.svc?c.svc.servicio:c.servicio_id}</div>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    })}
-                  </div>
-               </div>
-             </div>
-             <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar · desliza para ver las columnas →</div>
+              <div className="ag-filtros">
+                {FILTROS.map(([k,l])=><button key={k} className={"ag-fchip"+(filtro===k?' on':'')} onClick={()=>setFiltro(k)}>{l}</button>)}
+              </div>
+              <div className="ag-list">
+                {citasFranja.length===0 ? <div className="ag-vacio">Sin citas en esta franja</div> : citasFranja.map(c=>filaCita(c))}
+              </div>
+              <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar</div>
            </>}
         </>
       }
