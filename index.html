@@ -14,7 +14,6 @@
 <!-- ============================================================= -->
 <script>
   window.SYNA_API = "https://script.google.com/macros/s/AKfycbxShQ8OsbaXajcaqI-D3_QWWszIkTvoi6b-R3UXqvjmirDCkfvY6rtm60ivXfDsnc8q/exec";
-</script>
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -748,18 +747,20 @@ function App(){
 function Previsualizacion({dia, servicio, onClose, onConfirm}){
   const [disp,setDisp]=useState(null);
   const [citas,setCitas]=useState([]);
+  const [horDia,setHorDia]=useState(null);
   const [franja,setFranja]=useState('dia');
   const [sel,setSel]=useState('');
   const pm=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
   const hLbl=h=>{const ap=h<12?'am':'pm';let x=h%12;if(x===0)x=12;return x+ap;};
   const HOR={1:['09:00','19:00'],2:['09:00','19:00'],3:['09:00','19:00'],4:['09:00','19:00'],5:['09:00','19:00'],6:['08:00','17:00'],0:null};
   useEffect(()=>{ (async()=>{
-    try{ const [d,r]=await Promise.all([apiGet('getDisponibilidad',{servicio_id:servicio.id,fecha:dia}),apiGet('getReservas',{fecha:dia})]);
+    try{ const [d,r,h]=await Promise.all([apiGet('getDisponibilidad',{servicio_id:servicio.id,fecha:dia}),apiGet('getReservas',{fecha:dia}),apiGet('getHorarioDia',{fecha:dia})]);
       setDisp(d.ok?d:{slots:[],cerrado:false});
       setCitas((r.ok?r.reservas:[]).filter(c=>String(c.area)===String(servicio.area) && !['cancelada','no_show'].includes(String(c.estado||'').toLowerCase())));
+      setHorDia(h.ok?h:null);
     }catch(e){ setDisp({slots:[]}); }
   })(); },[]);
-  const dow=new Date(dia+'T12:00:00').getDay(); const hh=HOR[dow];
+  const dow=new Date(dia+'T12:00:00').getDay(); const hh=horDia ? (horDia.cerrado?null:[horDia.abre,horDia.cierra]) : HOR[dow];
   const abre=hh?pm(hh[0]):540, cierra=hh?pm(hh[1]):1140, CORTE=13*60;
   const fIni=franja==='tarde'?CORTE:abre, fFin=franja==='manana'?CORTE:cierra;
   const PPM=franja==='dia'?1.35:2.3, tlH=Math.max(150,(fFin-fIni)*PPM);
@@ -819,9 +820,11 @@ function Reservar({areas,servicios,colorArea}){
   const [hecho,setHecho]=useState(null);
   const [preview,setPreview]=useState(null);
   const [clientas,setClientas]=useState(null);
+  const [horDia,setHorDia]=useState(null);
 
   useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getPromos'); setPromos(r.ok?r.promos:[]); }catch(e){ setPromos([]); } })(); },[]);
   useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getClientes'); setClientas(r.ok?(r.clientes||[]):[]); }catch(e){ setClientas([]); } })(); },[]);
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getHorarioDia',{fecha:dia}); setHorDia(r.ok?r:null); }catch(e){ setHorDia(null); } })(); },[dia]);
   const svcPorId=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
   const money=n=>'$'+Math.round(n||0);
 
@@ -829,8 +832,9 @@ function Reservar({areas,servicios,colorArea}){
   const pm=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
   const hhmm=m=>{const z=n=>(n<10?'0':'')+n;return z(Math.floor(m/60))+':'+z(m%60);};
   const dow=new Date(dia+'T12:00:00').getDay();
-  const cerrado=!HOR[dow];
-  const horOpts=useMemo(()=>{ const h=HOR[dow]; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[]; for(let t=a;t<c;t+=15)o.push(hhmm(t)); return o; },[dia]);
+  const hBase=horDia ? (horDia.cerrado?null:[horDia.abre,horDia.cierra]) : HOR[dow];
+  const cerrado=!hBase;
+  const horOpts=useMemo(()=>{ const h=hBase; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[]; for(let t=a;t<c;t+=15)o.push(hhmm(t)); return o; },[dia,horDia]);
 
   const setPer=(i,patch)=>setPersonas(ps=>ps.map((p,j)=>j===i?{...p,...patch}:p));
   const setFila=(pi,fi,patch)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:{...p,filas:p.filas.map((f,k)=>k===fi?{...f,...patch}:f)}));
@@ -1424,6 +1428,7 @@ function Agenda({servicios,colorArea}){
   const [accion,setAccion]=useState(null);
   const [diaAbierto,setDiaAbierto]=useState(false);
   const [franja,setFranja]=useState('dia');
+  const [horDia,setHorDia]=useState(null);
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
   const pad2=n=>String(n).padStart(2,'0');
@@ -1431,6 +1436,7 @@ function Agenda({servicios,colorArea}){
   const cargarMes=async()=>{ setMesData(null);
     try{ const r=await apiGet('getReservasMes',{mes:mesStr}); setMesData(r.ok?r.reservas:[]); }catch(e){ setMesData([]); } };
   useEffect(()=>{cargarMes()},[cur.y,cur.m]);
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getHorarioDia',{fecha:sel}); setHorDia(r.ok?r:null); }catch(e){ setHorDia(null); } })(); },[sel]);
   const cancelar=async(id)=>{ if(!confirm('¿Eliminar esta cita?'))return; await apiPost('cancelarReserva',{id}); cargarMes(); };
 
   const selEnMes=sel.slice(0,7)===mesStr;
@@ -1442,9 +1448,9 @@ function Agenda({servicios,colorArea}){
   const hhmm=m=>{ const z=n=>(n<10?'0':'')+n; return z(Math.floor(m/60))+':'+z(m%60); };
   const money=n=>'$'+Math.round(n||0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 
-  // Horario del día (réplica de la hoja Horarios)
+  // Horario del día desde backend; fallback local si la API no responde.
   const HOR={1:['09:00','19:00'],2:['09:00','19:00'],3:['09:00','19:00'],4:['09:00','19:00'],5:['09:00','19:00'],6:['08:00','17:00'],0:null};
-  const dow=new Date(sel+'T12:00:00').getDay(); const hh=HOR[dow]; const cerrado=!hh;
+  const dow=new Date(sel+'T12:00:00').getDay(); const hh=horDia ? (horDia.cerrado?null:[horDia.abre,horDia.cierra]) : HOR[dow]; const cerrado=!hh;
   const abre=hh?pm(hh[0]):540, cierra=hh?pm(hh[1]):1140, CORTE=13*60;
 
   const catDe=(svc)=>{ if(!svc)return 'normal';
