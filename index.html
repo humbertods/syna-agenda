@@ -378,21 +378,20 @@
   .ag-libre small{font-weight:500;color:#6E9A45}
   .ag-libre-dot{width:9px;height:9px;border-radius:50%;background:#69B021;flex:0 0 auto}
 
-  /* ---- Agenda diaria en lista ---- */
+  /* ---- Agenda timeline por columnas ---- */
   .ag-resumen{font-size:13px;font-weight:600;color:var(--soft);margin:2px 2px 10px}
   .lg{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0 2px 12px}
   .lg-i{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--soft);font-weight:600}
   .lg-i i{width:11px;height:11px;border-radius:3px;display:inline-block}
-  .ag-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-  .ag-cita{cursor:pointer}
-  .ag-cita:active{transform:scale(.99)}
   .tl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;background:var(--surface);
     box-shadow:0 1px 4px rgba(40,30,80,.07);padding-bottom:4px}
   .tl-inner{position:relative}
   .tl-hdr{display:flex;border-bottom:1px solid var(--line)}
   .tl-corner{width:46px;flex:0 0 auto}
   .tl-chead{width:156px;flex:0 0 auto;text-align:center;font-size:11.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--ink);text-transform:uppercase;padding:9px 4px}
+    color:var(--ink);text-transform:uppercase;padding:9px 4px;transition:width .18s ease;white-space:nowrap;overflow:hidden;text-overflow:clip}
+  .tl-chead.closed{width:78px}
+  .tl-toggle{border:none;background:transparent;color:var(--ink);font:inherit;font-weight:900;cursor:pointer;padding:0 2px;margin-left:3px}
   .tl-body{display:flex;position:relative}
   .tl-gutter{width:46px;flex:0 0 auto;position:relative}
   .tl-hlabel{position:absolute;right:6px;transform:translateY(-50%);font-size:11.5px;color:var(--ink);font-weight:700;white-space:nowrap}
@@ -400,15 +399,24 @@
   .franja-b{flex:1;padding:11px 8px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);
     font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
   .franja-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
-  .tl-col{width:156px;flex:0 0 auto;position:relative;border-left:1px solid var(--line)}
+  .tl-col{width:156px;flex:0 0 auto;position:relative;border-left:1px solid var(--line);transition:width .18s ease}
+  .tl-col.closed{width:78px}
   .tl-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.045)}
-  .tl-pill{position:absolute;left:4px;right:4px;border:none;border-radius:9px;padding:4px 7px;text-align:left;cursor:pointer;
-    overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.13);font-family:inherit;display:flex;flex-direction:column;justify-content:center;gap:1px}
+  .tl-pill{position:absolute;left:5px;right:5px;height:23px;border:none;border-radius:8px;padding:0 7px;text-align:left;cursor:pointer;
+    overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15);font-family:inherit;display:flex;align-items:center;gap:4px;color:#1f1b16}
   .tl-pill:active{transform:scale(.985)}
-  .tl-pill-t{font-size:11px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tl-pill-s{font-size:10.5px;font-weight:500;opacity:.85;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tl-pill-t{font-size:10.5px;font-weight:800;line-height:1;white-space:nowrap;flex:0 0 auto}
+  .tl-pill-c{font-size:10.5px;font-weight:800;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:58px}
+  .tl-pill-s{font-size:10px;font-weight:700;opacity:.88;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tl-dot{width:7px;height:7px;border-radius:50%;background:#12A143;box-shadow:0 0 0 2px rgba(18,161,67,.18);margin-left:auto;flex:0 0 auto}
   .tl-hint{font-size:11.5px;color:var(--soft);text-align:center;margin-top:10px}
-  .tl-pill.pend{box-shadow:0 1px 2px rgba(0,0,0,.13), inset 0 0 0 1.6px rgba(0,0,0,.24)}
+  .tl-pill.st-lista{background:#63C75D;color:#0D3E16}
+  .tl-pill.st-proceso{background:#E8C47F;color:#5B390B}
+  .tl-pill.st-cancelada{background:#B93326;color:#160605}
+  .tl-pill.st-pendiente{background:#E9BD7D;color:#5D3910}
+  .tl-pill.st-normal{background:#C6E6D2;color:#2C5E40}
+  .tl-col.closed .tl-pill{padding:0 5px;gap:2px}
+  .tl-col.closed .tl-pill-c,.tl-col.closed .tl-pill-s{display:none}
 
   /* ---- Panel de cita (confirmar / abono) ---- */
   .sheet-ov{position:fixed;inset:0;background:rgba(20,15,40,.42);z-index:50;display:flex;align-items:flex-end;justify-content:center}
@@ -1433,6 +1441,7 @@ function Agenda({servicios,colorArea}){
   const [diaAbierto,setDiaAbierto]=useState(false);
   const [franja,setFranja]=useState('dia');
   const [horDia,setHorDia]=useState(null);
+  const [colsCerradas,setColsCerradas]=useState({});
   const svcMap=useMemo(()=>{const m={};servicios.forEach(s=>m[s.id]=s);return m;},[servicios]);
 
   const pad2=n=>String(n).padStart(2,'0');
@@ -1467,7 +1476,7 @@ function Agenda({servicios,colorArea}){
     return 'normal'; };
 
   const citas=useMemo(()=> (data||[])
-    .filter(r=>{ const e=(r.estado||'').toLowerCase(); return e!=='cancelada' && e!=='no_show'; })
+    .filter(r=>{ const e=(r.estado||'').toLowerCase(); return e!=='no_show'; })
     .map(r=>{ const svc=svcMap[r.servicio_id]; const ini=pm(r.hora_inicio); let fin=pm(r.hora_fin);
       if(fin==null||fin<=ini) fin=ini+((svc&&svc.duracion)||30);
       return {...r, ini, fin, svc, precio:(svc&&+svc.precio)||0, cat:catDe(svc)}; })
@@ -1528,9 +1537,13 @@ function Agenda({servicios,colorArea}){
   const celdas=[]; for(let i=0;i<off;i++)celdas.push(null); for(let d=1;d<=diasMes;d++)celdas.push(d);
   const cambiarMes=delta=>{let m=cur.m+delta,y=cur.y;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setCur({y,m});};
 
-  // ---- Lista diaria ordenada por hora ----
+  // ---- Timeline por columnas, con tickets compactos ordenados por hora ----
   const franjaIni = (franja==='tarde')?CORTE:abre;
   const franjaFin = (franja==='manana')?CORTE:cierra;
+  const PPM = (franja==='dia')?1.35:2.3;
+  const tlH=Math.max(120,(franjaFin-franjaIni)*PPM);
+  const horas=[]; for(let h=Math.ceil(franjaIni/60); h*60<=franjaFin; h++) horas.push(h);
+  const hLbl=h=>{ const ap=h<12?'am':'pm'; let x=h%12; if(x===0)x=12; return x+ap; };
   const tipoDe=svc=>{ if(!svc)return 'cejas_short';
     const a=(svc.area||'').toLowerCase(), g=(svc.grupo||'').toLowerCase(), n=(svc.servicio||'').toLowerCase(), dur=+svc.duracion||30;
     if(g.indexOf('permanente')>=0 || n.indexOf('efecto polvo')>=0) return 'permanente';
@@ -1545,9 +1558,20 @@ function Agenda({servicios,colorArea}){
   const TIPOCOL={ cejas_long:['#8DCBA6','#1F4D33'], cejas_short:['#C6E6D2','#2C5E40'], depilacion:['#ECC08A','#6E4410'],
     facial:['#AEC9E8','#234C7A'], pestanas:['#ECE08F','#6E6411'], permanente:['#D8BBE0','#5A3168'] };
   const LEYENDA=[['cejas_long','Cejas +1h'],['cejas_short','Cejas −1h'],['depilacion','Depil.'],['facial','Facial'],['pestanas','Pestañas'],['permanente','Perm.']];
-  const citasFranja=citas
-    .filter(c=>c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c))
-    .sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||'')));
+  const estadoClase=c=>{ const e=(c.estado||'').toLowerCase();
+    if(e==='completada') return 'lista';
+    if(e==='en_proceso' || e==='confirmada') return 'proceso';
+    if(e==='cancelada') return 'cancelada';
+    if(e==='pendiente') return 'pendiente';
+    return 'normal'; };
+  const layoutLineas=list=>{ const lanes=[];
+    return list.slice().sort((a,b)=>a.ini-b.ini||a.fin-b.fin||String(a.cliente_nombre||'').localeCompare(String(b.cliente_nombre||''))).map(c=>{
+      let lane=lanes.findIndex(fin=>fin<=c.ini); if(lane<0){lane=lanes.length; lanes.push(0);}
+      lanes[lane]=Math.max(c.fin,c.ini+15);
+      return {...c,_lane:lane};
+    });
+  };
+  const toggleCol=col=>setColsCerradas(m=>({...m,[col]:!m[col]}));
 
   return (
     <div className="fade">
@@ -1583,13 +1607,41 @@ function Agenda({servicios,colorArea}){
                {[['manana','Mañana'],['tarde','Tarde'],['dia','Todo el día']].map(([k,l])=>
                  <button key={k} className={"franja-b"+(franja===k?' on':'')} onClick={()=>setFranja(k)}>{l}</button>)}
              </div>
-              <div className="ag-filtros">
-                {FILTROS.map(([k,l])=><button key={k} className={"ag-fchip"+(filtro===k?' on':'')} onClick={()=>setFiltro(k)}>{l}</button>)}
+              <div className="tl-scroll">
+                <div className="tl-inner" style={{minWidth:46+COLS.reduce((n,c)=>n+(colsCerradas[c]?78:156),0)}}>
+                  <div className="tl-hdr">
+                    <div className="tl-corner"></div>
+                    {COLS.map(c=><div key={c} className={"tl-chead"+(colsCerradas[c]?' closed':'')}>{c}<button className="tl-toggle" onClick={()=>toggleCol(c)} title={colsCerradas[c]?'Abrir columna':'Cerrar columna'}>{colsCerradas[c]?'◇':'◆'}</button></div>)}
+                  </div>
+                  <div className="tl-body" style={{height:tlH}}>
+                    <div className="tl-gutter">
+                      {horas.map(h=><div key={h} className="tl-hlabel" style={{top:(h*60-franjaIni)*PPM}}>{hLbl(h)}</div>)}
+                    </div>
+                    {COLS.map(col=>{
+                      const cerrada=!!colsCerradas[col];
+                      const colCitas=layoutLineas(citas.filter(c=>colDe(c.svc)===col && c.ini>=franjaIni && c.ini<franjaFin && pasaFiltro(c)));
+                      return <div key={col} className={"tl-col"+(cerrada?' closed':'')} style={{background:COLWASH[col]}}>
+                        {horas.map(h=><div key={h} className="tl-line" style={{top:(h*60-franjaIni)*PPM}}></div>)}
+                        {colCitas.map((c,i)=>{
+                          const top=Math.max(0,(c.ini-franjaIni)*PPM)+(c._lane*26);
+                          const st=estadoClase(c), activo=st==='proceso';
+                          const serv=c.svc?c.svc.servicio:c.servicio_id;
+                          const key=c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`;
+                          return (
+                            <button key={key} className={"tl-pill st-"+st} style={{top}} onClick={()=>setAccion(c)}>
+                              <span className="tl-pill-t">{hhmm(c.ini)}</span>
+                              <span className="tl-pill-c">{c.cliente_nombre||'—'}</span>
+                              <span className="tl-pill-s">{serv}</span>
+                              {activo && <span className="tl-dot"></span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="ag-list">
-                {citasFranja.length===0 ? <div className="ag-vacio">Sin citas en esta franja</div> : citasFranja.map(c=>filaCita(c))}
-              </div>
-              <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar</div>
+              <div className="tl-hint">Toca una cita para confirmar, abonar o reagendar · ◆ contrae columna · ◇ abre columna</div>
            </>}
         </>
       }
