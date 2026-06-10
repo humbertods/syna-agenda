@@ -726,7 +726,7 @@ function App(){
             <div className="menu-ov" onClick={()=>setMenuOpen(false)}></div>
             <div className="menu-pop">
               <div className="menu-row">
-                <span>Asistente virtual</span>
+                <span>Copiloto SYNA</span>
                 <button className={"sw-toggle"+(asistenteOn?' on':'')} onClick={toggleAsis} aria-label="Activar o desactivar asistente"><span className="sw-knob"></span></button>
               </div>
               <div className="menu-sep"></div>
@@ -849,10 +849,21 @@ function Reservar({areas,servicios,colorArea}){
   const HOR={1:['09:00','19:00'],2:['09:00','19:00'],3:['09:00','19:00'],4:['09:00','19:00'],5:['09:00','19:00'],6:['08:00','17:00'],0:null};
   const pm=t=>{const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null;};
   const hhmm=m=>{const z=n=>(n<10?'0':'')+n;return z(Math.floor(m/60))+':'+z(m%60);};
+  const esPestanas=srv=>{ const txt=((srv&&srv.area)||'')+' '+((srv&&srv.servicio)||''); return /pesta|lifting/i.test(txt); };
   const dow=new Date(dia+'T12:00:00').getDay();
   const hBase=horDia ? (horDia.cerrado?null:[horDia.abre,horDia.cierra]) : HOR[dow];
   const cerrado=!hBase;
-  const horOpts=useMemo(()=>{ const h=hBase; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[]; for(let t=a;t<c;t+=15)o.push(hhmm(t)); return o; },[dia,horDia]);
+  const graciaPestanas=useMemo(()=>{ const sels=[];
+    personas.forEach(p=>(p.filas||[]).forEach(f=>{ if(!f.sid || f.area==='__promo__')return; sels.push(svcPorId[f.sid]||{area:f.area,servicio:''}); }));
+    return sels.length===0 || sels.every(esPestanas);
+  },[personas,svcPorId]);
+  const horOpts=useMemo(()=>{ const h=hBase; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[];
+    const now=new Date(), hoyStr=hoy();
+    const minIni=dia===hoyStr ? (now.getHours()*60+now.getMinutes()-(graciaPestanas?30:0)) : null;
+    for(let t=a;t<c;t+=15){ if(minIni!=null && t<minIni)continue; o.push(hhmm(t)); }
+    return o;
+  },[dia,horDia,graciaPestanas]);
+  useEffect(()=>{ if(hora && horOpts.indexOf(hora)<0)setHora(''); },[hora,horOpts]);
 
   const setPer=(i,patch)=>setPersonas(ps=>ps.map((p,j)=>j===i?{...p,...patch}:p));
   const setFila=(pi,fi,patch)=>setPersonas(ps=>ps.map((p,j)=>j!==pi?p:{...p,filas:p.filas.map((f,k)=>k===fi?{...f,...patch}:f)}));
@@ -1683,17 +1694,18 @@ function Agenda({servicios,colorArea}){
   );
 }
 
-/* ---------- Asistente (chat IA) ---------- */
+/* ---------- Copiloto SYNA (chat IA interno) ---------- */
 const SUGERENCIAS = [
-  '¿Qué citas hay hoy?',
-  'Agenda cejas mañana 3pm para Ana',
-  '¿Hay espacio el sábado en la tarde?',
-  'Reagenda mi última cita'
+  'La clienta dice: quiero mis cejas mañana en la tarde',
+  'Margareth quiere lo mismo de siempre mañana',
+  'Clienta pregunta si hay espacio para pestañas el sábado',
+  'Ayúdame a responder y agendar esta conversación'
 ];
 function Asistente(){
-  const [msgs,setMsgs]=useState([{role:'assistant',text:'Hola 👋 Soy el asistente de SYNA. Dime qué necesitas — por ejemplo: "agenda depilación de cejas mañana a las 3pm para Ana".'}]);
+  const [msgs,setMsgs]=useState([{role:'assistant',text:'Copiloto SYNA listo. Pega aquí lo que te escribió la clienta y te sugiero cómo responder/agendar. No agendo automáticamente: tú apruebas primero.'}]);
   const [input,setInput]=useState('');
   const [cargando,setCargando]=useState(false);
+  const [copiado,setCopiado]=useState('');
   const finRef = React.useRef(null);
 
   useEffect(()=>{ if(finRef.current) finRef.current.scrollIntoView({behavior:'smooth'}); },[msgs,cargando]);
@@ -1704,11 +1716,12 @@ function Asistente(){
     const nuevos=[...msgs,{role:'user',text:t}];
     setMsgs(nuevos); setInput(''); setCargando(true);
     try{
-      const r=await apiPost('chat',{history:nuevos});
+      const r=await apiPost('chat',{history:nuevos,modo:'copiloto'});
       setMsgs(m=>[...m,{role:'assistant',text:r.reply||'(sin respuesta)'}]);
     }catch(e){ setMsgs(m=>[...m,{role:'assistant',text:'Ups, error de conexión. Intenta de nuevo.'}]); }
     setCargando(false);
   };
+  const copiar=async(txt)=>{ try{ await navigator.clipboard.writeText(txt); setCopiado('Copiado'); setTimeout(()=>setCopiado(''),1200); }catch(e){ setCopiado('No se pudo copiar'); } };
 
   return (
     <div className="fade chat-wrap">
@@ -1717,14 +1730,18 @@ function Asistente(){
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6zM18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/></svg>
         </div>
         <div className="asis-meta">
-          <div className="asis-name">Asistente SYNA</div>
-          <div className="asis-on">En línea</div>
+          <div className="asis-name">Copiloto SYNA</div>
+          <div className="asis-on">Modo revisión</div>
         </div>
       </div>
+      <div className="perm-intro">Pega mensajes de clientas. SYNA propone respuesta y cita; tú decides si copias, editas o agendas manualmente.</div>
 
       <div className="chat-msgs">
         {msgs.map((m,i)=>(
-          <div key={i} className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}</div>
+          <div key={i} style={{display:'flex',flexDirection:'column',alignItems:m.role==='assistant'?'flex-start':'flex-end'}}>
+            <div className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}</div>
+            {m.role==='assistant' && i>0 && <button className="chip" style={{marginTop:6}} onClick={()=>copiar(m.text)}>Copiar respuesta</button>}
+          </div>
         ))}
         {msgs.length===1 && !cargando &&
           <div className="chips">
@@ -1733,11 +1750,12 @@ function Asistente(){
             ))}
           </div>}
         {cargando && <div className="typing"><span></span><span></span><span></span></div>}
+        {copiado && <div className="muted" style={{fontSize:12,marginTop:4}}>{copiado}</div>}
         <div ref={finRef}></div>
       </div>
 
       <div className="chatbar"><div className="chatbar-in">
-        <input value={input} placeholder="Escribe un mensaje…"
+        <input value={input} placeholder="Pega el mensaje de la clienta…"
           onChange={e=>setInput(e.target.value)}
           onKeyDown={e=>{ if(e.key==='Enter') enviar(); }} />
         <button className="send" disabled={cargando||!input.trim()} onClick={enviar} aria-label="Enviar">
@@ -1859,7 +1877,7 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
 
       <div className="qa">
         <button className="qa-btn" onClick={()=>go('reservar')}>＋ Nueva reserva</button>
-        {asistenteOn && <button className="qa-btn ghost" onClick={()=>go('asistente')}>✨ Asistente</button>}
+        {asistenteOn && <button className="qa-btn ghost" onClick={()=>go('asistente')}>✨ Copiloto</button>}
       </div>
 
       <div className="stats">
