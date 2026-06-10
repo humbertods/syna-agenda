@@ -389,9 +389,12 @@
   .tl-hdr{display:flex;border-bottom:1px solid var(--line)}
   .tl-corner{width:46px;flex:0 0 auto}
   .tl-chead{width:156px;flex:0 0 auto;text-align:center;font-size:11.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--ink);text-transform:uppercase;padding:9px 4px;transition:width .18s ease;white-space:nowrap;overflow:hidden;text-overflow:clip}
-  .tl-chead.closed{width:78px}
-  .tl-toggle{border:none;background:transparent;color:var(--ink);font:inherit;font-weight:900;cursor:pointer;padding:0 2px;margin-left:3px}
+    color:var(--ink);text-transform:uppercase;padding:9px 4px;transition:width .18s ease;white-space:nowrap;overflow:hidden;text-overflow:clip;
+    background:transparent;border:none;font-family:inherit;cursor:pointer}
+  .tl-chead.closed{width:104px}
+  .tl-chead span{display:inline-block;max-width:118px;vertical-align:middle;overflow:hidden;text-overflow:clip;white-space:nowrap}
+  .tl-chead.closed span{max-width:82px}
+  .tl-toggle{font-weight:900;padding:0 2px;margin-left:3px}
   .tl-body{display:flex;position:relative}
   .tl-gutter{width:46px;flex:0 0 auto;position:relative}
   .tl-hlabel{position:absolute;right:6px;transform:translateY(-50%);font-size:11.5px;color:var(--ink);font-weight:700;white-space:nowrap}
@@ -400,7 +403,7 @@
     font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
   .franja-b.on{background:var(--brand);border-color:var(--brand);color:#fff}
   .tl-col{width:156px;flex:0 0 auto;position:relative;border-left:1px solid var(--line);transition:width .18s ease}
-  .tl-col.closed{width:78px}
+  .tl-col.closed{width:104px}
   .tl-line{position:absolute;left:0;right:0;height:1px;background:rgba(0,0,0,.045)}
   .tl-pill{position:absolute;left:5px;right:5px;height:23px;border:none;border-radius:8px;padding:0 7px;text-align:left;cursor:pointer;
     overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.15);font-family:inherit;display:flex;align-items:center;gap:4px;color:#1f1b16}
@@ -410,11 +413,14 @@
   .tl-pill-s{font-size:10px;font-weight:700;opacity:.88;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .tl-dot{width:7px;height:7px;border-radius:50%;background:#12A143;box-shadow:0 0 0 2px rgba(18,161,67,.18);margin-left:auto;flex:0 0 auto}
   .tl-hint{font-size:11.5px;color:var(--soft);text-align:center;margin-top:10px}
-  .tl-pill.st-lista{background:#63C75D;color:#0D3E16}
-  .tl-pill.st-proceso{background:#E8C47F;color:#5B390B}
+  .tl-pill.tp-cejas_long{background:#8DCBA6;color:#1F4D33}
+  .tl-pill.tp-cejas_short{background:#C6E6D2;color:#2C5E40}
+  .tl-pill.tp-depilacion{background:#ECC08A;color:#6E4410}
+  .tl-pill.tp-facial{background:#AEC9E8;color:#234C7A}
+  .tl-pill.tp-pestanas{background:#ECE08F;color:#6E6411}
+  .tl-pill.tp-permanente{background:#D8BBE0;color:#5A3168}
   .tl-pill.st-cancelada{background:#B93326;color:#160605}
-  .tl-pill.st-pendiente{background:#E9BD7D;color:#5D3910}
-  .tl-pill.st-normal{background:#C6E6D2;color:#2C5E40}
+  .tl-pill.st-proceso,.tl-pill.st-lista{box-shadow:0 1px 2px rgba(0,0,0,.15), inset 0 0 0 2px rgba(18,161,67,.22)}
   .tl-col.closed .tl-pill{padding:0 5px;gap:2px}
   .tl-col.closed .tl-pill-c,.tl-col.closed .tl-pill-s{display:none}
 
@@ -1629,10 +1635,10 @@ function Agenda({servicios,colorArea}){
                  <button key={k} className={"franja-b"+(franja===k?' on':'')} onClick={()=>setFranja(k)}>{l}</button>)}
              </div>
               <div className="tl-scroll">
-                <div className="tl-inner" style={{minWidth:46+COLS.reduce((n,c)=>n+(colsCerradas[c]?78:156),0)}}>
+                <div className="tl-inner" style={{minWidth:46+COLS.reduce((n,c)=>n+(colsCerradas[c]?104:156),0)}}>
                   <div className="tl-hdr">
                     <div className="tl-corner"></div>
-                    {COLS.map(c=><div key={c} className={"tl-chead"+(colsCerradas[c]?' closed':'')}>{c}<button className="tl-toggle" onClick={()=>toggleCol(c)} title={colsCerradas[c]?'Abrir columna':'Cerrar columna'}>{colsCerradas[c]?'◇':'◆'}</button></div>)}
+                    {COLS.map(c=><button key={c} className={"tl-chead"+(colsCerradas[c]?' closed':'')} onClick={()=>toggleCol(c)} title={colsCerradas[c]?'Abrir columna':'Cerrar columna'}><span>{c}</span><b className="tl-toggle">{colsCerradas[c]?'◇':'◆'}</b></button>)}
                   </div>
                   <div className="tl-body" style={{height:tlH}}>
                     <div className="tl-gutter">
@@ -1645,11 +1651,11 @@ function Agenda({servicios,colorArea}){
                         {horas.map(h=><div key={h} className="tl-line" style={{top:hourTops[h*60]||0}}></div>)}
                         {colCitas.map((c,i)=>{
                           const top=c._top;
-                          const st=estadoClase(c), activo=st==='proceso';
+                          const st=estadoClase(c), tp=tipoDe(c), activo=st==='proceso';
                           const serv=(c.svc && String(c.svc.area||'')===String(c.area||''))?c.svc.servicio:c.servicio_id;
                           const key=c.id||`${c.fecha}-${c.hora_inicio}-${c.cliente_nombre}-${i}`;
                           return (
-                            <button key={key} className={"tl-pill st-"+st} style={{top}} onClick={()=>setAccion(c)}>
+                            <button key={key} className={"tl-pill tp-"+tp+" st-"+st} style={{top}} onClick={()=>setAccion(c)}>
                               <span className="tl-pill-t">{hhmm(c.ini)}</span>
                               <span className="tl-pill-c">{c.cliente_nombre||'—'}</span>
                               <span className="tl-pill-s">{serv}</span>
