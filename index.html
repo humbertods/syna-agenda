@@ -112,6 +112,8 @@
   .ra.ok:active{background:#EAF7EE}
   .ra.can{color:#C0392B;border-color:#E9B3AC}
   .ra.can:active{background:#FBEAE7}
+  .ra.warn{color:#B26A00;border-color:#F0C36A}
+  .ra.warn:active{background:#FFF4D8}
   .ra-load{font-size:20px;color:var(--soft);padding:0 12px}
   .done-card{margin-top:10px;align-items:center}
   .dc-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex:0 0 auto}
@@ -1726,7 +1728,7 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
   const [d,setD]=useState(null);
   const [err,setErr]=useState('');
   const [openCard,setOpenCard]=useState('');
-  const [actState,setActState]=useState({});   // key -> 'busy'|'done'|'cancelled'
+  const [actState,setActState]=useState({});   // key -> 'busy'|'done'|'incomplete'|'cancelled'
   const cargar=async()=>{
     try{ const r=await apiGet('getResumen'); if(r&&r.ok){setD(r);setErr('');} else setErr('No se pudo cargar el resumen.'); }
     catch(e){ setErr('Error de conexión.'); }
@@ -1734,7 +1736,7 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
   useEffect(()=>{cargar()},[]);
   const accionCita=async(p,tipo)=>{
     const key=p.grupo||(p.ids&&p.ids[0])||p.cliente;
-    const action=tipo==='llego'?'confirmarLlegadaCita':tipo==='cancelar'?'cancelarCitaNex':'atendidaCita';
+    const action=tipo==='llego'?'confirmarLlegadaCita':tipo==='cancelar'?'cancelarCitaNex':tipo==='incompleta'?'incompletaCita':'atendidaCita';
     if(!(p.ids&&p.ids.length)){ alert('Esta cita no tiene ids; no se puede '+action+'.'); return; }
     setActState(s=>({...s,[key]:'busy'}));
     try{
@@ -1745,7 +1747,7 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
         setActState(s=>({...s,[key]:''}));
         return;
       }
-      setActState(s=>({...s,[key]:tipo==='cancelar'?'cancelled':'done'}));
+      setActState(s=>({...s,[key]:tipo==='cancelar'?'cancelled':tipo==='incompleta'?'incomplete':'done'}));
       setTimeout(cargar,1200);
     }catch(e){
       console.error('accionCita error:',e);
@@ -1760,7 +1762,8 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
     const key=p.grupo||(p.ids&&p.ids[0])||(p.cliente+i);
     const st=actState[key]||'';
     const open=openCard===key;
-    if(st==='done') return <div key={key} className="resv done-card"><span className="dc-ic ok">✓</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">{live?'Ya fue atendida':'Llegada confirmada'}</div></div></div>;
+    if(st==='done') return <div key={key} className="resv done-card"><span className="dc-ic ok">✓</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">{live?'Cliente lista':'Llegada confirmada'}</div></div></div>;
+    if(st==='incomplete') return <div key={key} className="resv done-card"><span className="dc-ic" style={{color:'#B26A00',background:'#FFF4D8'}}>!</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">Terminada incompleta</div></div></div>;
     if(st==='cancelled') return <div key={key} className="resv done-card"><span className="dc-ic can">⊘</span><div style={{flex:1,minWidth:0}}><div className="who">{p.cliente}</div><div className="what">Cita cancelada</div></div></div>;
     return (
       <div key={key} className="resv-wrap">
@@ -1774,7 +1777,10 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
         </div>
         <div className={"resv-acts"+(open?' show':'')}>
           {st==='busy' ? <span className="ra-load">…</span> : live
-            ? <button className="ra ok" title="Ya fue atendida" onClick={()=>accionCita(p,'atendida')}>✓</button>
+            ? <>
+                <button className="ra warn" title="Terminada incompleta" onClick={()=>accionCita(p,'incompleta')}>!</button>
+                <button className="ra ok" title="Cliente lista" onClick={()=>accionCita(p,'atendida')}>✓</button>
+              </>
             : <>
                 <button className="ra can" title="Cancelar cita" onClick={()=>accionCita(p,'cancelar')}>⊘</button>
                 <button className="ra ok" title="Ya llegó a su cita" onClick={()=>accionCita(p,'llego')}>✓</button>
@@ -1819,27 +1825,28 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
       </div>
 
       {esCEO && <>
-        <div className="sub">Próximas a atender <span className="muted" style={{fontWeight:400}}>· 2 h</span></div>
-        {d.proximas.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Nada en las próximas 2 horas</div> :
+        <div className="sub">Próximas a atender <span className="muted" style={{fontWeight:400}}>· pendientes</span></div>
+        {d.proximas.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Nada pendiente de llegada</div> :
           d.proximas.map((p,i)=>fila(p,i,false))}
 
-        <div className="sub">En proceso <span className="muted" style={{fontWeight:400}}>· ahora</span></div>
+        <div className="sub">En proceso <span className="muted" style={{fontWeight:400}}>· llegaron</span></div>
         {d.enProceso.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Ninguna cita en curso</div> :
           d.enProceso.map((p,i)=>fila(p,i,true))}
 
         <div className="sub">Atendidas hoy <span className="muted" style={{fontWeight:400}}>· {(d.atendidas||[]).length}</span></div>
         {(d.atendidas||[]).length===0 ? <div className="empty" style={{padding:'14px 0'}}>Aún ninguna atendida hoy 🌿</div> : <>
           <div className="muted" style={{fontSize:12.5,margin:'-2px 2px 8px'}}>Listas para el seguimiento de satisfacción 💬</div>
-          {(d.atendidas||[]).map((p,i)=>(
-            <div key={'at'+i} className="resv atendida-card" style={{borderLeftColor:colorArea(p.area)}}>
+          {(d.atendidas||[]).map((p,i)=>{
+            const inc=(p.estado||'').toLowerCase()==='incompleta';
+            return <div key={'at'+i} className="resv atendida-card" style={{borderLeftColor:inc?'#B26A00':colorArea(p.area)}}>
               <div className="time">{p.hora_inicio}<small>{p.hora_fin}</small></div>
               <div style={{flex:1,minWidth:0}}>
                 <div className="who">{p.cliente}</div>
-                <div className="what">{p.servicio} · {p.area}</div>
+                <div className="what">{p.servicio} · {p.area}{inc?' · incompleta':''}</div>
               </div>
-              <span className="dc-ic ok" style={{width:30,height:30,fontSize:15}}>✓</span>
-            </div>
-          ))}
+              <span className={"dc-ic "+(inc?'':'ok')} style={inc?{width:30,height:30,fontSize:15,color:'#B26A00',background:'#FFF4D8'}:{width:30,height:30,fontSize:15}}>{inc?'!':'✓'}</span>
+            </div>;
+          })}
         </>}
       </>}
 
