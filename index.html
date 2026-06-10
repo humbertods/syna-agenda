@@ -881,6 +881,24 @@ function Reservar({areas,servicios,colorArea}){
   const promoDe=num=>(promos||[]).find(p=>p.numero===num)||null;
   const filaPrecio=f=> f.area==='__promo__' ? ((promoDe(f.sid)&&promoDe(f.sid).precio)||0) : ((svcPorId[f.sid]&&+svcPorId[f.sid].precio)||0);
   const totalPrecio=personas.reduce((s,p)=> s + p.filas.reduce((a,f)=>a+(f.sid?filaPrecio(f):0),0),0);
+  const resumenCita=c=>`${fechaTxt(c.fecha)} ${c.hora_inicio||''}${c.servicio?(' · '+c.servicio):''}`;
+
+  const confirmarDuplicadosSemana=async()=>{
+    for(let i=0;i<personas.length;i++){
+      const p=personas[i];
+      const nom=p.modo==='nueva' ? ((p.nombre||'').trim()+' '+(p.apellido||'').trim()).trim() : (p.nombre||'').trim();
+      if(!p.cliente_id && !nom)continue;
+      const r=await apiGet('getCitasClienteSemana',{cliente_id:p.cliente_id||'',cliente_nombre:nom,fecha:dia});
+      const citas=(r&&r.ok)?(r.citas||[]):[];
+      if(citas.length){
+        const lista=citas.slice(0,3).map(resumenCita).join('\n');
+        const extra=citas.length>3?'\n...y '+(citas.length-3)+' más':'';
+        const nombre=nom||('Persona '+(i+1));
+        if(!window.confirm(`${nombre} ya está agendada esta semana:\n${lista}${extra}\n\n¿Desea agendarle otra cita?`))return false;
+      }
+    }
+    return true;
+  };
 
   const agendar=async()=>{
     if(!hora) return setAviso('Elige la hora');
@@ -895,7 +913,10 @@ function Reservar({areas,servicios,colorArea}){
       payload.push({cliente_id:p.cliente_id||'',cliente_nombre:nomFull,telefono:(p.tel||'').trim(),cedula:(p.cedula||'').trim(),correo:(p.correo||'').trim(),items});
     }
     setEnviando(true); setAviso('');
-    try{ const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
+    try{
+      const okDup=await confirmarDuplicadosSemana();
+      if(!okDup){ setEnviando(false); return; }
+      const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
       if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar'); }
     catch(e){ setAviso('Error de conexión'); }
     setEnviando(false);
