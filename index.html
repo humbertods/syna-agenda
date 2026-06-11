@@ -666,6 +666,7 @@ const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'
 const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function fechaBonita(f){ const m=f.match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f;
   const d=new Date(+m[1],+m[2]-1,+m[3]); return `${DIAS[d.getDay()]} ${+m[3]} ${MES[+m[2]-1]}`; }
+const fechaTxt=fechaBonita;
 function fechaCorta(f){ const m=String(f).match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f; return `${+m[3]} ${MES[+m[2]-1]}`; }
 const MESES_L=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function fechaLarga(f){ const m=String(f).match(/(\d{4})-(\d{2})-(\d{2})/); if(!m)return f;
