@@ -651,11 +651,13 @@ const API = window.SYNA_API;
 async function apiGet(action, params={}){
   const qs = new URLSearchParams({action, ...params}).toString();
   const r = await fetch(`${API}?${qs}`);
-  return r.json();
+  const txt = await r.text();
+  try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
 }
 async function apiPost(action, params={}){
   const r = await fetch(API, {method:'POST', body: JSON.stringify({action, ...params})});
-  return r.json();
+  const txt = await r.text();
+  try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
 }
 
 /* ---------- utilidades ---------- */
@@ -888,7 +890,9 @@ function Reservar({areas,servicios,colorArea}){
       const p=personas[i];
       const nom=p.modo==='nueva' ? ((p.nombre||'').trim()+' '+(p.apellido||'').trim()).trim() : (p.nombre||'').trim();
       if(!p.cliente_id && !nom)continue;
-      const r=await apiGet('getCitasClienteSemana',{cliente_id:p.cliente_id||'',cliente_nombre:nom,fecha:dia});
+      let r;
+      try{ r=await apiGet('getCitasClienteSemana',{cliente_id:p.cliente_id||'',cliente_nombre:nom,fecha:dia}); }
+      catch(e){ return window.confirm('No pude verificar si la clienta ya está agendada esta semana. ¿Desea continuar de todos modos?'); }
       const citas=(r&&r.ok)?(r.citas||[]):[];
       if(citas.length){
         const lista=citas.slice(0,3).map(resumenCita).join('\n');
@@ -918,7 +922,7 @@ function Reservar({areas,servicios,colorArea}){
       if(!okDup){ setEnviando(false); return; }
       const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
       if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar'); }
-    catch(e){ setAviso('Error de conexión'); }
+    catch(e){ setAviso('Error de conexión: '+(e&&e.message?e.message:'reintenta')); }
     setEnviando(false);
   };
   const reset=()=>{ setHecho(null);setDia(hoy());setHora('');setPersonas([nuevaPersona()]);setAviso(''); };
