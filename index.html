@@ -13,7 +13,7 @@
 <!--  la nueva URL que termina en /exec                            -->
 <!-- ============================================================= -->
 <script>
-  window.SYNA_API = "https://script.google.com/macros/s/AKfycbxShQ8OsbaXajcaqI-D3_QWWszIkTvoi6b-R3UXqvjmirDCkfvY6rtm60ivXfDsnc8q/exec";
+  window.SYNA_API = "REEMPLAZAR_CON_URL_WEB_APP_SYNA";
 </script>
 
 <meta name="mobile-web-app-capable" content="yes">
@@ -682,7 +682,12 @@ function App(){
   const [authed,setAuthed]=useState(()=>storeGet('syna_auth')==='1');
   const [rol,setRol]=useState(()=>storeGet('syna_rol'));
   const [nombre,setNombre]=useState(()=>storeGet('syna_nombre'));
-  const [tab,setTab]=useState('principal');
+  // ── Modo embebido: NexServ abre SYNA en un iframe con ?embed=1&view=... ──
+  const _params = (()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return new URLSearchParams(''); } })();
+  const EMBED = _params.get('embed')==='1' || _params.get('embed')==='true';
+  const _viewMap = { reservar:'reservar', agenda:'calendario', calendario:'calendario', asistente:'asistente', copiloto:'asistente', principal:'principal' };
+  const _initialTab = _viewMap[String(_params.get('view')||'').toLowerCase()] || 'principal';
+  const [tab,setTab]=useState(_initialTab);
   const [areas,setAreas]=useState([]);
   const [servicios,setServicios]=useState([]);
   const [cargando,setCargando]=useState(true);
@@ -721,7 +726,7 @@ function App(){
 
   return (
     <div id="app">
-      <header>
+      {!EMBED && <header>
         <img className="logo" src="logo_icon_solo.png" alt="SYNA" />
         <div className="menu-wrap">
           <button className="menu-btn" onClick={()=>setMenuOpen(o=>!o)} aria-label="Menú">S</button>
@@ -741,7 +746,7 @@ function App(){
             </div>
           </>}
         </div>
-      </header>
+      </header>}
       <main>
         {cargando ? <div className="spinner"></div> :
          err ? <div className="empty">{err}<br/><br/>Revisa que la URL de la API esté bien.</div> :
@@ -749,7 +754,7 @@ function App(){
            {tab==='principal'   ? <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/> :
             tab==='calendario'  ? <Agenda servicios={servicios} colorArea={colorArea}/> :
             tab==='reservar'    ? <Reservar areas={areas} servicios={servicios} colorArea={colorArea}/> :
-            (tab==='asistente' && asistenteOn) ? <Asistente/> :
+            (tab==='asistente' && (asistenteOn || EMBED)) ? <Asistente/> :
             tab==='permisos'    ? <Permisos go={go}/> :
             tab==='recepcion'   ? <Recepcion go={go} servicios={servicios}/> :
             tab==='clientas'    ? <Clientas go={go}/> :
@@ -758,7 +763,7 @@ function App(){
             <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
          </div>}
       </main>
-      <MenuFlotante tab={tab} go={go} onRefresh={onRefresh} refreshing={refreshing}/>
+      {!EMBED && <MenuFlotante tab={tab} go={go} onRefresh={onRefresh} refreshing={refreshing}/>}
     </div>
   );
 }
