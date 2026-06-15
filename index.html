@@ -1913,6 +1913,10 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
         {asistenteOn && <button className="qa-btn ghost" onClick={()=>go('asistente')}>✨ Copiloto</button>}
       </div>
 
+      <div className="qa">
+        <button className="qa-btn ghost" onClick={()=>go('calendario')}>Agenda</button>
+      </div>
+
       <div className="stats">
         <div className="stat"><div className="n">{d.porRealizar}</div><div className="l">Por realizar</div></div>
         <div className="stat"><div className="n">{d.realizadas}</div><div className="l">Realizadas</div></div>
