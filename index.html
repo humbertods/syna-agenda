@@ -1949,33 +1949,7 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
           ))}
       </div>
 
-      {esCEO && <>
-        <div className="sub">Próximas a atender <span className="muted" style={{fontWeight:400}}>· pendientes</span></div>
-        {d.proximas.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Nada pendiente de llegada</div> :
-          d.proximas.map((p,i)=>fila(p,i,false))}
-
-        <div className="sub">En proceso <span className="muted" style={{fontWeight:400}}>· llegaron</span></div>
-        {d.enProceso.length===0 ? <div className="empty" style={{padding:'14px 0'}}>Ninguna cita en curso</div> :
-          d.enProceso.map((p,i)=>fila(p,i,true))}
-
-        <div className="sub">Atendidas hoy <span className="muted" style={{fontWeight:400}}>· {(d.atendidas||[]).length}</span></div>
-        {(d.atendidas||[]).length===0 ? <div className="empty" style={{padding:'14px 0'}}>Aún ninguna atendida hoy 🌿</div> : <>
-          <div className="muted" style={{fontSize:12.5,margin:'-2px 2px 8px'}}>Listas para el seguimiento de satisfacción 💬</div>
-          {(d.atendidas||[]).map((p,i)=>{
-            const inc=(p.estado||'').toLowerCase()==='incompleta';
-            return <div key={'at'+i} className="resv atendida-card" style={{borderLeftColor:inc?'#B26A00':colorArea(p.area)}}>
-              <div className="time">{p.hora_inicio}<small>{p.hora_fin}</small></div>
-              <div style={{flex:1,minWidth:0}}>
-                <div className="who">{p.cliente}</div>
-                <div className="what">{p.servicio} · {p.area}{inc?' · incompleta':''}</div>
-              </div>
-              <span className={"dc-ic "+(inc?'':'ok')} style={inc?{width:30,height:30,fontSize:15,color:'#B26A00',background:'#FFF4D8'}:{width:30,height:30,fontSize:15}}>{inc?'!':'✓'}</span>
-            </div>;
-          })}
-        </>}
-      </>}
-
-      {!esCEO && <div className="muted" style={{textAlign:'center',fontSize:12.5,marginTop:26}}>Vista de propietario · resumen semanal</div>}
+      <div className="muted" style={{textAlign:'center',fontSize:12.5,marginTop:26}}>SYNA organiza agenda y reservas. La espera, atención y cobro se manejan en NexServ.</div>
     </div>
   );
 }
