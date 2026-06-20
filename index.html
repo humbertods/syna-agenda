@@ -839,6 +839,7 @@ function Previsualizacion({dia, servicio, onClose, onConfirm}){
 function Reservar({areas,servicios,colorArea}){
   const MAXSERV=5;
   const nuevaPersona=()=>({modo:'existente',cliente_id:'',_cli:null,hist:null,q:'',open:'',nombre:'',apellido:'',cedula:'',correo:'',tel:'',filas:[{area:'',sid:''}]});
+  const [modoReserva,setModoReserva]=useState('agenda');
   const [dia,setDia]=useState(hoy());
   const [hora,setHora]=useState('');
   const [personas,setPersonas]=useState([nuevaPersona()]);
@@ -913,7 +914,7 @@ function Reservar({areas,servicios,colorArea}){
   };
 
   const agendar=async()=>{
-    if(!hora) return setAviso('Elige la hora');
+    if(modoReserva==='agenda' && !hora) return setAviso('Elige la hora');
     const payload=[];
     for(let i=0;i<personas.length;i++){ const p=personas[i];
       if(p.modo==='existente' && !p.cliente_id) return setAviso('Elige la clienta existente en la persona '+(i+1));
@@ -926,9 +927,13 @@ function Reservar({areas,servicios,colorArea}){
     }
     setEnviando(true); setAviso('');
     try{
-      const okDup=await confirmarDuplicadosSemana();
-      if(!okDup){ setEnviando(false); return; }
-      const r=await apiPost('crearCitaGrupo',{fecha:dia,hora_inicio:hora,personas:payload});
+      if(modoReserva==='agenda'){
+        const okDup=await confirmarDuplicadosSemana();
+        if(!okDup){ setEnviando(false); return; }
+      }
+      const action=modoReserva==='ahora'?'atenderAhora':'crearCitaGrupo';
+      const body=modoReserva==='ahora'?{personas:payload}:{fecha:dia,hora_inicio:hora,personas:payload};
+      const r=await apiPost(action,body);
       if(r.ok) setHecho(r); else setAviso(r.error||'No se pudo agendar'); }
     catch(e){ setAviso('Error de conexión: '+(e&&e.message?e.message:'reintenta')); }
     setEnviando(false);
@@ -940,7 +945,7 @@ function Reservar({areas,servicios,colorArea}){
       <div className="ok-circle" style={{background:'var(--brand)'}}>
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4"><path d="M5 13l4 4L19 7"/></svg>
       </div>
-      <div className="display" style={{fontSize:22,fontWeight:600}}>¡Cita{hecho.personas.length>1?'s':''} agendada{hecho.personas.length>1?'s':''}!</div>
+      <div className="display" style={{fontSize:22,fontWeight:600}}>{hecho.modo==='atender_ahora'?'¡Clienta enviada a lista de espera!':`¡Cita${hecho.personas.length>1?'s':''} agendada${hecho.personas.length>1?'s':''}!`}</div>
       <div style={{fontSize:14,color:'var(--soft)',marginTop:4,textTransform:'capitalize'}}>{fechaLarga(hecho.fecha)}</div>
       {hecho.personas.map((per,i)=>(
         <div className="card summary" key={i} style={{marginTop:14,textAlign:'left'}}>
@@ -948,24 +953,33 @@ function Reservar({areas,servicios,colorArea}){
           {per.citas.map(c=><div className="row" key={c.id}><span className="k" style={{fontWeight:400}}>{c.servicio}</span><span>{c.hora_inicio}–{c.hora_fin} · {c.staff_asignado}</span></div>)}
         </div>
       ))}
+      {hecho.modo==='atender_ahora' && hecho.llegada && hecho.llegada.nex && !hecho.llegada.nex.ok ? <div className="aviso" style={{marginTop:12}}>Se creó en SYNA, pero NexServ respondió: {hecho.llegada.nex.error||'revisar ticket'}</div> : null}
       <button className="btn" onClick={reset}>Nueva cita</button>
     </div>
   );
 
   return (
     <div className="fade">
-      <div className="sec-title">Agendar cita</div>
+      <div className="sec-title">Nueva cita</div>
 
-      <div className="grid2">
-        <div><label>Día</label>
-          <input type="date" className="date-input" value={dia} min={hoy()} onChange={e=>{setDia(e.target.value);setHora('');}} /></div>
-        <div><label>Hora</label>
-          <select className="sel" value={hora} onChange={e=>setHora(e.target.value)}>
-            <option value="">{cerrado?'Cerrado 🌙':'Elige hora…'}</option>
-            {horOpts.map(h=><option key={h} value={h}>{h}</option>)}
-          </select></div>
+      <div className="cli-toggle" style={{marginBottom:14}}>
+        <button className={"cli-tg"+(modoReserva==='ahora'?' on':'')} onClick={()=>{setModoReserva('ahora');setAviso('');}}>Atender ahora</button>
+        <button className={"cli-tg"+(modoReserva==='agenda'?' on':'')} onClick={()=>{setModoReserva('agenda');setAviso('');}}>Agendar para después</button>
       </div>
-      <div className="promo-hint">Todas las personas inician a la hora elegida (en paralelo, cada una con su staff).</div>
+      <div className="promo-hint">{modoReserva==='ahora'?'Para clientas que ya están en el local: se crea en SYNA y pasa directo a Lista de espera en NexServ.':'Para reservar una hora futura: SYNA la guarda en agenda y la manda a Prelista cuando llegue la hora.'}</div>
+
+      {modoReserva==='agenda' && <>
+        <div className="grid2">
+          <div><label>Día</label>
+            <input type="date" className="date-input" value={dia} min={hoy()} onChange={e=>{setDia(e.target.value);setHora('');}} /></div>
+          <div><label>Hora</label>
+            <select className="sel" value={hora} onChange={e=>setHora(e.target.value)}>
+              <option value="">{cerrado?'Cerrado 🌙':'Elige hora…'}</option>
+              {horOpts.map(h=><option key={h} value={h}>{h}</option>)}
+            </select></div>
+        </div>
+        <div className="promo-hint">Todas las personas inician a la hora elegida (en paralelo, cada una con su staff).</div>
+      </>}
 
       {personas.map((p,pi)=>(
         <div className="pcard" key={pi}>
@@ -1065,7 +1079,7 @@ function Reservar({areas,servicios,colorArea}){
           : 'Elige al menos un servicio para previsualizar los espacios');
         setAviso(''); setPreview(svc);
       }}>Previsualización · ver espacios</button>
-      <button className="btn" disabled={enviando} onClick={agendar}>{enviando?'Agendando…':'Agendar cita'}</button>
+      <button className="btn" disabled={enviando} onClick={agendar}>{enviando?(modoReserva==='ahora'?'Enviando…':'Agendando…'):(modoReserva==='ahora'?'Atender ahora':'Agendar cita')}</button>
 
       {preview && <Previsualizacion dia={dia} servicio={preview}
         onClose={()=>setPreview(null)}
