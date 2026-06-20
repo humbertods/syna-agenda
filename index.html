@@ -741,6 +741,7 @@ function App(){
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('permisos');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Permisos y bloqueos</button>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('recepcion');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 5v14" strokeDasharray="2 2"/></svg>Recepción · tickets</button>
               <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('clientas');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>Clientas</button>
+              <button className="menu-go" onClick={()=>{setMenuOpen(false);setTab('laboratorio');}}><svg className="menu-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3v5l-4 8a4 4 0 0 0 3.6 5h6.8A4 4 0 0 0 19 16l-4-8V3"/><path d="M8 3h8"/><path d="M7 15h10"/></svg>Laboratorio</button>
               <div className="menu-sep"></div>
               <button className="menu-item" onClick={()=>{setMenuOpen(false);salir();}}>Salir</button>
             </div>
@@ -758,6 +759,7 @@ function App(){
             tab==='permisos'    ? <Permisos go={go}/> :
             tab==='recepcion'   ? <Recepcion go={go} servicios={servicios}/> :
             tab==='clientas'    ? <Clientas go={go}/> :
+            tab==='laboratorio' ? <Laboratorio/> :
             tab==='seguimiento' ? <Seguimiento/> :
             tab==='fidelidad'   ? <Fidelidad/> :
             <Principal rol={rol} nombre={nombre} colorArea={colorArea} go={go} asistenteOn={asistenteOn}/>}
@@ -869,9 +871,7 @@ function Reservar({areas,servicios,colorArea}){
     return sels.length===0 || sels.every(esPestanas);
   },[personas,svcPorId]);
   const horOpts=useMemo(()=>{ const h=hBase; if(!h)return []; const a=pm(h[0]),c=pm(h[1]),o=[];
-    const now=new Date(), hoyStr=hoy();
-    const minIni=dia===hoyStr ? (now.getHours()*60+now.getMinutes()-(graciaPestanas?30:0)) : null;
-    for(let t=a;t<c;t+=15){ if(minIni!=null && t<minIni)continue; o.push(hhmm(t)); }
+    for(let t=a;t<c;t+=15){ o.push(hhmm(t)); }
     return o;
   },[dia,horDia,graciaPestanas]);
   useEffect(()=>{ if(hora && horOpts.indexOf(hora)<0)setHora(''); },[hora,horOpts]);
@@ -1952,6 +1952,46 @@ function Principal({rol,nombre,colorArea,go,asistenteOn}){
       <div className="muted" style={{textAlign:'center',fontSize:12.5,marginTop:26}}>SYNA organiza agenda y reservas. La espera, atención y cobro se manejan en NexServ.</div>
     </div>
   );
+}
+
+/* ---------- Laboratorio de tiempos y experiencia ---------- */
+function Laboratorio(){
+  const [lista,setLista]=useState(null), [q,setQ]=useState(''), [fecha,setFecha]=useState(''), [sel,setSel]=useState(null), [data,setData]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState('');
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getClientes'); setLista(r.ok?(r.clientes||[]):[]); }catch(e){ setLista([]); } })(); },[]);
+  const norm=s=>String(s||'').toLowerCase();
+  const money=n=>'$'+Math.round((Number(n)||0)*100)/100;
+  const filtradas=(lista||[]).filter(c=>{ const t=norm(q); return !t || norm(c.nombre).indexOf(t)>=0 || norm(c.codigo).indexOf(t)>=0 || String(c.telefono||'').indexOf(t)>=0; }).slice(0,8);
+  const buscar=async(c)=>{ const codigo=(c&&c.codigo)||q.trim(); if(!codigo)return; setSel(c||{codigo}); setBusy(true); setErr(''); setData(null);
+    try{ const r=await apiGet('getLaboratorioCliente',{codigo,fecha}); if(r.ok)setData(r); else setErr(r.error||'No se pudo cargar laboratorio'); }
+    catch(e){ setErr(e&&e.message?e.message:'Error de conexión'); }
+    setBusy(false);
+  };
+  const nex=data&&data.nexserv&&data.nexserv.success?data.nexserv:null;
+  const hist=data&&data.historial_syna&&data.historial_syna.ok?data.historial_syna:null;
+  const reservas=(data&&data.reservas_syna)||[];
+  const visitas=(nex&&nex.visitas)||[];
+  const obs=(nex&&nex.historial&&nex.historial.observacionesStaff)||[];
+  const fichas=(hist&&hist.fichas)||{};
+  return <div className="fade">
+    <div className="sec-title">Laboratorio</div>
+    <div className="promo-hint">Busca por clienta/código. El análisis usa código + fecha, no solo ticket, para sobrevivir tickets borrados y recreados.</div>
+    <div className="grid2"><input className="inp" placeholder="Código, nombre o teléfono" value={q} onChange={e=>setQ(e.target.value)} /><input type="date" className="date-input" value={fecha} onChange={e=>setFecha(e.target.value)} /></div>
+    {q.trim().length>=2 && <div className="cli-results" style={{position:'relative',marginBottom:12}}>{filtradas.map(c=><button key={c.codigo} className="cli-res" onClick={()=>buscar(c)}><b>{c.nombre}</b><span>{c.codigo}{c.telefono?(' · '+c.telefono):''}</span></button>)}{filtradas.length===0&&<button className="cli-res" onClick={()=>buscar(null)}>Buscar código "{q}"</button>}</div>}
+    <button className="btn" disabled={busy} onClick={()=>buscar(sel)}>{busy?'Buscando…':'Buscar laboratorio'}</button>
+    {err&&<div className="aviso">{err}</div>}
+    {data&&<>
+      <div className="cli-ficha-h"><div className="cli-ficha-nom">{(hist&&hist.cliente&&hist.cliente.nombre)||(nex&&nex.visitas&&nex.visitas[0]&&nex.visitas[0].cliente)||data.codigo}</div><div className="cli-ficha-meta">{data.codigo}</div></div>
+      <div className="stats"><div className="stat"><div className="n">{reservas.length}</div><div className="l">Agendas SYNA</div></div><div className="stat"><div className="n">{visitas.length}</div><div className="l">Visitas Lineas</div></div><div className="stat"><div className="n">{obs.length}</div><div className="l">Obs. staff</div></div></div>
+      <div className="cli-sec">Cómo agendó en SYNA</div>
+      {reservas.length===0?<div className="empty" style={{padding:'12px 0'}}>Sin reservas SYNA para este filtro.</div>:reservas.map(r=><div className="cli-visita" key={r.id}><div className="cli-v-top"><span className="cli-v-srv">{r.servicio}</span><span className="cli-v-tot">{r.duracion_estimada_min} min</span></div><div className="cli-v-meta">{fechaCorta(r.fecha)} · {r.hora_inicio}–{r.hora_fin} · {r.estado}{r.nex_ticket?(' · '+r.nex_ticket):''}</div></div>)}
+      <div className="cli-sec">Tiempo operativo / Lineas NexServ</div>
+      {visitas.length===0?<div className="empty" style={{padding:'12px 0'}}>Sin líneas NexServ para este filtro.</div>:visitas.map(v=><div className="cli-box" key={v.visita}><div className="cli-box-t">{v.fecha} · {v.estados.join(', ')} · promo {money(v.totalPromo)}{Math.abs((v.totalRegular||0)-(v.totalPromo||0))>0.01?' · regular '+money(v.totalRegular):''}</div>{v.lineas.map(l=><div className="cli-visita" key={l.id}><div className="cli-v-top"><span className="cli-v-srv">{l.servicio}</span><span className="cli-v-tot">{money(l.monto)}</span></div><div className="cli-v-meta">{l.hora||''} · {l.area||''}{l.staff?(' · '+l.staff):' · sin staff'} · {l.estado}{l.metodoPago?(' · '+l.metodoPago):''}</div>{l.obs?<div className="ficha-sub">{l.obs}</div>:null}</div>)}</div>)}
+      <div className="cli-sec">Observaciones permanentes staff</div>
+      {obs.length===0?<div className="empty" style={{padding:'12px 0'}}>Sin comentarios permanentes.</div>:obs.slice(0,8).map((o,i)=><div className="cli-visita" key={i}><div className="cli-v-meta">{o.fecha} {o.hora} · {o.area} · {o.staff}</div><div className="ficha-sub">{o.observacion}</div></div>)}
+      <div className="cli-sec">Fichas</div>
+      <div className="cli-visita">{(fichas.facial||[]).length>0?<FichaDetalle tipo="facial" items={fichas.facial}/>:null}{(fichas.pestanas||[]).length>0?<FichaDetalle tipo="pestanas" items={fichas.pestanas}/>:null}{(fichas.cejas||[]).length>0?<FichaDetalle tipo="cejas" items={fichas.cejas}/>:null}{!(fichas.facial||[]).length&&!(fichas.pestanas||[]).length&&!(fichas.cejas||[]).length?<div className="empty" style={{padding:'8px 0'}}>Sin fichas registradas.</div>:null}</div>
+    </>}
+  </div>;
 }
 
 /* ---------- Seguimiento (próximo paso) ---------- */
