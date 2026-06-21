@@ -1753,6 +1753,8 @@ function Asistente(){
   const [input,setInput]=useState('');
   const [cargando,setCargando]=useState(false);
   const [copiado,setCopiado]=useState('');
+  const [editIdx,setEditIdx]=useState(null);
+  const [editTxt,setEditTxt]=useState('');
   const finRef = React.useRef(null);
 
   useEffect(()=>{ if(finRef.current) finRef.current.scrollIntoView({behavior:'smooth'}); },[msgs,cargando]);
@@ -1769,6 +1771,18 @@ function Asistente(){
     setCargando(false);
   };
   const copiar=async(txt)=>{ try{ await navigator.clipboard.writeText(txt); setCopiado('Copiado'); setTimeout(()=>setCopiado(''),1200); }catch(e){ setCopiado('No se pudo copiar'); } };
+  const patrones=()=>{ try{return JSON.parse(localStorage.getItem('syna_patrones_chat')||'[]')||[];}catch(e){return [];} };
+  const guardarPatron=(idx,original,corregida)=>{ try{
+    const entrada=msgs.slice(Math.max(0,idx-3),idx).map(m=>({role:m.role,text:m.text}));
+    const arr=patrones(); arr.push({fecha:new Date().toISOString(),entrada,original,corregida});
+    localStorage.setItem('syna_patrones_chat',JSON.stringify(arr.slice(-100)));
+  }catch(e){} };
+  const abrirEditar=(idx,txt)=>{ setEditIdx(idx); setEditTxt(txt); };
+  const cancelarEditar=()=>{ setEditIdx(null); setEditTxt(''); };
+  const guardarEdicion=()=>{ const txt=editTxt.trim(); if(editIdx==null||!txt)return;
+    setMsgs(ms=>ms.map((m,i)=>i===editIdx?{...m,text:txt,editada:true}:m));
+    const original=(msgs[editIdx]&&msgs[editIdx].text)||''; guardarPatron(editIdx,original,txt);
+    setCopiado('Patrón guardado'); setTimeout(()=>setCopiado(''),1400); cancelarEditar(); };
 
   return (
     <div className="fade chat-wrap">
@@ -1786,8 +1800,11 @@ function Asistente(){
       <div className="chat-msgs">
         {msgs.map((m,i)=>(
           <div key={i} style={{display:'flex',flexDirection:'column',alignItems:m.role==='assistant'?'flex-start':'flex-end'}}>
-            <div className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}</div>
-            {m.role==='assistant' && i>0 && <button className="chip" style={{marginTop:6}} onClick={()=>copiar(m.text)}>Copiar respuesta</button>}
+            {editIdx===i ? <div className="bubble bot" style={{width:'88%',padding:10}}>
+              <textarea className="inp" style={{minHeight:120,resize:'vertical'}} value={editTxt} onChange={e=>setEditTxt(e.target.value)} />
+              <div className="chips" style={{marginTop:8}}><button className="chip" onClick={guardarEdicion}>Guardar patrón</button><button className="chip" onClick={cancelarEditar}>Cancelar</button></div>
+            </div> : <div className={"bubble "+(m.role==='assistant'?'bot':'me')}>{m.text}{m.editada?<div className="muted" style={{fontSize:11,marginTop:6}}>respuesta modificada · patrón guardado</div>:null}</div>}
+            {m.role==='assistant' && i>0 && editIdx!==i && <div className="chips" style={{marginTop:6}}><button className="chip" onClick={()=>copiar(m.text)}>Copiar respuesta</button><button className="chip" onClick={()=>abrirEditar(i,m.text)}>Modificar respuesta</button></div>}
           </div>
         ))}
         {msgs.length===1 && !cargando &&
