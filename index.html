@@ -1771,7 +1771,8 @@ function Asistente(){
         tono:localStorage.getItem('syna_adapt_tono')||'',
         plantillas:JSON.parse(localStorage.getItem('syna_adapt_templates')||'[]').filter(x=>x&&x.respuesta).slice(0,10),
         rapidas:JSON.parse(localStorage.getItem('syna_quick_replies')||'[]').filter(Boolean).slice(0,30),
-        patrones:JSON.parse(localStorage.getItem('syna_patrones_chat')||'[]').slice(-12)
+        patrones:JSON.parse(localStorage.getItem('syna_patrones_chat')||'[]').slice(-12),
+        recursos:JSON.parse(localStorage.getItem('syna_adapt_recursos')||'{}')
       };}catch(e){return {};}})();
       const r=await apiPost('chat',{history:nuevos,modo:'copiloto',adaptacion});
       setMsgs(m=>[...m,{role:'assistant',text:r.reply||'(sin respuesta)'}]);
@@ -2038,21 +2039,26 @@ function AdaptacionIA(){
   const [tab,setTab]=useState('plantillas');
   const [tpl,setTpl]=useState(()=>load('syna_adapt_templates',ADAPT_TPL.map(([titulo,cliente,guia])=>({titulo,cliente,guia,respuesta:''}))));
   const [quick,setQuick]=useState(()=>load('syna_quick_replies',QUICK_BASE));
+  const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:'',depilacion:'',pestanas:'',facial:''}}));
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
   const patrones=load('syna_patrones_chat',[]);
   const saveTpl=(next)=>{ setTpl(next); localStorage.setItem('syna_adapt_templates',JSON.stringify(next)); };
   const saveQuick=(next)=>{ setQuick(next); localStorage.setItem('syna_quick_replies',JSON.stringify(next)); };
+  const saveRec=(next)=>{ setRec(next); localStorage.setItem('syna_adapt_recursos',JSON.stringify(next)); };
   const saveTono=(v)=>{ setTono(v); localStorage.setItem('syna_adapt_tono',v); };
   const setT=(i,patch)=>saveTpl(tpl.map((x,j)=>j===i?{...x,...patch}:x));
   const setQ=(i,v)=>saveQuick(quick.map((x,j)=>j===i?v:x));
   const addQ=()=>saveQuick([...quick,'']);
   const delQ=i=>saveQuick(quick.filter((_,j)=>j!==i));
+  const img=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec[key]?<button className="chip" onClick={()=>saveRec({...rec,[key]:''})}>Quitar</button>:null}</div>{rec[key]?<img src={rec[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>saveRec({...rec,[key]:String(rd.result||'')}); rd.readAsDataURL(f); }}/>}</div>;
+  const imgArea=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec.areas&&rec.areas[key]?<button className="chip" onClick={()=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:''}})}>Quitar</button>:null}</div>{rec.areas&&rec.areas[key]?<img src={rec.areas[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:String(rd.result||'')}}); rd.readAsDataURL(f); }}/>}</div>;
   return <div className="fade">
     <div className="sec-title">Adaptación IA</div>
     <div className="promo-hint">Edita plantillas y respuestas rápidas para enseñarle a SYNA cómo habla y vende tu empresa.</div>
     <div className="cli-toggle" style={{marginBottom:14}}>
       <button className={"cli-tg"+(tab==='plantillas'?' on':'')} onClick={()=>setTab('plantillas')}>Plantillas</button>
       <button className={"cli-tg"+(tab==='rapidas'?' on':'')} onClick={()=>setTab('rapidas')}>Respuestas rápidas</button>
+      <button className={"cli-tg"+(tab==='recursos'?' on':'')} onClick={()=>setTab('recursos')}>Recursos</button>
       <button className={"cli-tg"+(tab==='patrones'?' on':'')} onClick={()=>setTab('patrones')}>Patrones</button>
     </div>
     {tab==='plantillas'&&<>
@@ -2067,6 +2073,19 @@ function AdaptacionIA(){
     {tab==='rapidas'&&<>
       {quick.map((q,i)=><div className="srow" key={i}><input className="inp" value={q} onChange={e=>setQ(i,e.target.value)} placeholder="Respuesta rápida"/><button className="srow-x" onClick={()=>delQ(i)}>×</button></div>)}
       <button className="addx" onClick={addQ}>+ Agregar respuesta rápida</button>
+    </>}
+    {tab==='recursos'&&<>
+      <div className="promo-hint">Guarda aquí los materiales que ya usas en WhatsApp para que SYNA los tenga como referencia comercial.</div>
+      {img('cita','Imagen: cita agendada')}
+      {img('abono','Imagen: cita con abono agendada')}
+      {img('cuentas','Imagen: números de cuentas')}
+      <label className="nf-l">Link GPS del local</label><input className="inp" value={rec.gps||''} onChange={e=>saveRec({...rec,gps:e.target.value})} placeholder="https://maps.app.goo.gl/..." />
+      <label className="nf-l">Emojis usados durante asignación de cita</label><input className="inp" value={rec.emojis||''} onChange={e=>saveRec({...rec,emojis:e.target.value})} placeholder="✨ 💜 ✅ 📅" />
+      <div className="cli-sec">Imágenes por área de servicio</div>
+      {imgArea('cejas','Área: Cejas')}
+      {imgArea('depilacion','Área: Depilación')}
+      {imgArea('pestanas','Área: Pestañas')}
+      {imgArea('facial','Área: Facial')}
     </>}
     {tab==='patrones'&&<>
       <div className="promo-hint">Estos patrones salen de las respuestas que modificas en el Copiloto.</div>
