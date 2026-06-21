@@ -2041,11 +2041,13 @@ function AdaptacionIA(){
   const [quick,setQuick]=useState(()=>load('syna_quick_replies',QUICK_BASE));
   const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:'',depilacion:'',pestanas:'',facial:''}}));
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
+  const [guardado,setGuardado]=useState('');
   const patrones=load('syna_patrones_chat',[]);
   const saveTpl=(next)=>{ setTpl(next); localStorage.setItem('syna_adapt_templates',JSON.stringify(next)); };
   const saveQuick=(next)=>{ setQuick(next); localStorage.setItem('syna_quick_replies',JSON.stringify(next)); };
   const saveRec=(next)=>{ setRec(next); localStorage.setItem('syna_adapt_recursos',JSON.stringify(next)); };
   const saveTono=(v)=>{ setTono(v); localStorage.setItem('syna_adapt_tono',v); };
+  const guardarTodo=()=>{ localStorage.setItem('syna_adapt_templates',JSON.stringify(tpl)); localStorage.setItem('syna_quick_replies',JSON.stringify(quick.filter(q=>String(q||'').trim()))); localStorage.setItem('syna_adapt_recursos',JSON.stringify(rec)); localStorage.setItem('syna_adapt_tono',tono); setGuardado('Guardado en Adaptación IA'); setTimeout(()=>setGuardado(''),1600); };
   const setT=(i,patch)=>saveTpl(tpl.map((x,j)=>j===i?{...x,...patch}:x));
   const setQ=(i,v)=>saveQuick(quick.map((x,j)=>j===i?v:x));
   const addQ=()=>saveQuick([...quick,'']);
@@ -2069,10 +2071,12 @@ function AdaptacionIA(){
         <label className="nf-l">Respuesta ideal de la empresa</label><textarea className="inp" style={{minHeight:105,resize:'vertical'}} placeholder="Escribe cómo debería responder SYNA..." value={t.respuesta} onChange={e=>setT(i,{respuesta:e.target.value})}/>
         <label className="nf-l">Regla/guía</label><textarea className="inp" style={{minHeight:65,resize:'vertical'}} value={t.guia} onChange={e=>setT(i,{guia:e.target.value})}/>
       </div>)}
+      <button className="btn" onClick={guardarTodo}>Guardar plantillas</button>
     </>}
     {tab==='rapidas'&&<>
       {quick.map((q,i)=><div className="srow" key={i}><input className="inp" value={q} onChange={e=>setQ(i,e.target.value)} placeholder="Respuesta rápida"/><button className="srow-x" onClick={()=>delQ(i)}>×</button></div>)}
       <button className="addx" onClick={addQ}>+ Agregar respuesta rápida</button>
+      <button className="btn" onClick={guardarTodo}>Guardar respuestas rápidas</button>
     </>}
     {tab==='recursos'&&<>
       <div className="promo-hint">Guarda aquí los materiales que ya usas en WhatsApp para que SYNA los tenga como referencia comercial.</div>
@@ -2086,7 +2090,9 @@ function AdaptacionIA(){
       {imgArea('depilacion','Área: Depilación')}
       {imgArea('pestanas','Área: Pestañas')}
       {imgArea('facial','Área: Facial')}
+      <button className="btn" onClick={guardarTodo}>Guardar recursos</button>
     </>}
+    {guardado&&<div className="ok-msg" style={{textAlign:'center',marginTop:10}}>{guardado}</div>}
     {tab==='patrones'&&<>
       <div className="promo-hint">Estos patrones salen de las respuestas que modificas en el Copiloto.</div>
       {patrones.length===0?<div className="empty" style={{padding:'18px 0'}}>Aún no hay patrones guardados.</div>:patrones.slice().reverse().map((p,i)=><div className="cli-visita" key={i}><div className="cli-v-meta">{new Date(p.fecha).toLocaleString()}</div><div className="ficha-sub"><b>Original:</b> {p.original}</div><div className="ficha-sub"><b>Corregida:</b> {p.corregida}</div></div>)}
