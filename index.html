@@ -1767,9 +1767,9 @@ function Asistente(){
     const nuevos=[...msgs,{role:'user',text:t}];
     setMsgs(nuevos); setInput(''); setCargando(true);
     try{
-      const adaptacion=(()=>{ try{return {
+      const adaptacion=(()=>{ try{ const rawTpl=JSON.parse(localStorage.getItem('syna_adapt_templates')||'[]'); return {
         tono:localStorage.getItem('syna_adapt_tono')||'',
-        plantillas:JSON.parse(localStorage.getItem('syna_adapt_templates')||'[]').filter(x=>x&&x.respuesta).slice(0,10),
+        plantillas:rawTpl.map(t=>{ const ms=(t.mensajes||[]).filter(m=>String(m.text||'').trim()||m.image); return ms.length?{titulo:t.titulo,guia:t.guia,cliente:ms.filter(m=>m.role==='clienta').map(m=>m.text).join('\n'),respuesta:ms.filter(m=>m.role==='syna').map(m=>(m.text||'')+(m.image?' [enviar imagen]':'')).join('\n'),mensajes:ms.map(m=>({role:m.role,text:m.text||'',tieneImagen:!!m.image}))}:{...t}; }).filter(x=>x&&(x.respuesta||x.mensajes)).slice(0,10),
         rapidas:JSON.parse(localStorage.getItem('syna_quick_replies')||'[]').filter(Boolean).slice(0,30),
         patrones:JSON.parse(localStorage.getItem('syna_patrones_chat')||'[]').slice(-12),
         recursos:JSON.parse(localStorage.getItem('syna_adapt_recursos')||'{}')
@@ -2049,6 +2049,11 @@ function AdaptacionIA(){
   const saveTono=(v)=>{ setTono(v); localStorage.setItem('syna_adapt_tono',v); };
   const guardarTodo=()=>{ localStorage.setItem('syna_adapt_templates',JSON.stringify(tpl)); localStorage.setItem('syna_quick_replies',JSON.stringify(quick.filter(q=>String(q||'').trim()))); localStorage.setItem('syna_adapt_recursos',JSON.stringify(rec)); localStorage.setItem('syna_adapt_tono',tono); setGuardado('Guardado en Adaptación IA'); setTimeout(()=>setGuardado(''),1600); };
   const setT=(i,patch)=>saveTpl(tpl.map((x,j)=>j===i?{...x,...patch}:x));
+  const mensajesTpl=t=> (t.mensajes&&t.mensajes.length?t.mensajes:[{role:'clienta',text:t.cliente||'',image:''},{role:'syna',text:t.respuesta||'',image:''}]);
+  const setMsgTpl=(ti,mi,patch)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).map((m,j)=>j===mi?{...m,...patch}:m)});
+  const addMsgTpl=(ti,role)=>setT(ti,{mensajes:[...mensajesTpl(tpl[ti]),{role,text:'',image:''}]});
+  const delMsgTpl=(ti,mi)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).filter((_,j)=>j!==mi)});
+  const imgMsgTpl=(ti,mi)=>{ const m=mensajesTpl(tpl[ti])[mi]||{}; return m.image?<div><img src={m.image} style={{width:'100%',borderRadius:10,marginTop:8}}/><button className="chip" onClick={()=>setMsgTpl(ti,mi,{image:''})}>Quitar imagen</button></div>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>setMsgTpl(ti,mi,{image:String(rd.result||'')}); rd.readAsDataURL(f); }}/>; };
   const setQ=(i,v)=>saveQuick(quick.map((x,j)=>j===i?v:x));
   const addQ=()=>saveQuick([...quick,'']);
   const delQ=i=>saveQuick(quick.filter((_,j)=>j!==i));
@@ -2067,8 +2072,13 @@ function AdaptacionIA(){
       <label>Reglas de tono</label><textarea className="inp" style={{minHeight:90,resize:'vertical'}} value={tono} onChange={e=>saveTono(e.target.value)} />
       {tpl.map((t,i)=><div className="pcard" key={i}>
         <div className="pcard-h"><span>{i+1}. {t.titulo}</span></div>
-        <label className="nf-l">Mensaje de clienta</label><textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={t.cliente} onChange={e=>setT(i,{cliente:e.target.value})}/>
-        <label className="nf-l">Respuesta ideal de la empresa</label><textarea className="inp" style={{minHeight:105,resize:'vertical'}} placeholder="Escribe cómo debería responder SYNA..." value={t.respuesta} onChange={e=>setT(i,{respuesta:e.target.value})}/>
+        <div className="promo-hint">Simulación de venta por WhatsApp. Edita lo que dice la clienta, lo que responde SYNA y sube imagen cuando aplique.</div>
+        {mensajesTpl(t).map((m,mi)=><div key={mi} className="cli-visita" style={{background:m.role==='syna'?'#EEFBEF':'var(--surface)'}}>
+          <div className="cli-v-top"><select className="sel" style={{maxWidth:170}} value={m.role} onChange={e=>setMsgTpl(i,mi,{role:e.target.value})}><option value="clienta">Clienta</option><option value="syna">SYNA / empresa</option></select><button className="chip" onClick={()=>delMsgTpl(i,mi)}>Quitar</button></div>
+          <textarea className="inp" style={{minHeight:80,resize:'vertical'}} placeholder={m.role==='clienta'?'Mensaje de la clienta':'Respuesta ideal de SYNA'} value={m.text||''} onChange={e=>setMsgTpl(i,mi,{text:e.target.value})}/>
+          <label className="nf-l">Imagen en este momento <span className="nf-opt">(opcional)</span></label>{imgMsgTpl(i,mi)}
+        </div>)}
+        <div className="chips" style={{marginBottom:10}}><button className="chip" onClick={()=>addMsgTpl(i,'clienta')}>+ Mensaje clienta</button><button className="chip" onClick={()=>addMsgTpl(i,'syna')}>+ Respuesta SYNA</button></div>
         <label className="nf-l">Regla/guía</label><textarea className="inp" style={{minHeight:65,resize:'vertical'}} value={t.guia} onChange={e=>setT(i,{guia:e.target.value})}/>
       </div>)}
       <button className="btn" onClick={guardarTodo}>Guardar plantillas</button>
