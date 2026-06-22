@@ -2040,7 +2040,7 @@ function AdaptacionIA(){
   const [tpl,setTpl]=useState(()=>load('syna_adapt_templates',[]));
   const [tplOpen,setTplOpen]=useState(null);
   const [quick,setQuick]=useState(()=>load('syna_quick_replies',QUICK_BASE));
-  const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:'',depilacion:'',pestanas:'',facial:''}}));
+  const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:[],depilacion:[],pestanas:[],facial:[]}}));
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
   const [guardado,setGuardado]=useState('');
   const patrones=load('syna_patrones_chat',[]);
@@ -2061,7 +2061,10 @@ function AdaptacionIA(){
   const addQ=()=>saveQuick([...quick,'']);
   const delQ=i=>saveQuick(quick.filter((_,j)=>j!==i));
   const img=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec[key]?<button className="chip" onClick={()=>saveRec({...rec,[key]:''})}>Quitar</button>:null}</div>{rec[key]?<img src={rec[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>saveRec({...rec,[key]:String(rd.result||'')}); rd.readAsDataURL(f); }}/>}</div>;
-  const imgArea=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec.areas&&rec.areas[key]?<button className="chip" onClick={()=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:''}})}>Quitar</button>:null}</div>{rec.areas&&rec.areas[key]?<img src={rec.areas[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:String(rd.result||'')}}); rd.readAsDataURL(f); }}/>}</div>;
+  const areaList=key=>{ const v=(rec.areas||{})[key]; return Array.isArray(v)?v:(v?[{src:v,desc:''}]:[]); };
+  const saveAreaList=(key,list)=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:list}});
+  const addAreaFiles=(key,files)=>{ const arr=Array.from(files||[]); if(!arr.length)return; const current=areaList(key); let pending=arr.length, added=[]; arr.forEach(f=>{ const rd=new FileReader(); rd.onload=()=>{ added.push({src:String(rd.result||''),desc:''}); pending--; if(pending===0) saveAreaList(key,[...current,...added]); }; rd.readAsDataURL(f); }); };
+  const imgArea=(key,label)=>{ const list=areaList(key); return <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span><span className="cli-v-tot">{list.length} img</span></div><input type="file" accept="image/*" multiple className="inp" onChange={e=>addAreaFiles(key,e.target.files)} />{list.map((it,i)=><div key={i} className="cli-visita"><img src={it.src} style={{width:'100%',borderRadius:12,marginTop:8}}/><label className="nf-l">Descripción / servicios de esta imagen</label><textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={it.desc||''} onChange={e=>saveAreaList(key,list.map((x,j)=>j===i?{...x,desc:e.target.value}:x))} placeholder="Ej. Limpieza profunda, hidratación, peeling, beneficios..."/><button className="chip" onClick={()=>saveAreaList(key,list.filter((_,j)=>j!==i))}>Quitar imagen</button></div>)}</div>; };
   return <div className="fade">
     <div className="sec-title">Adaptación IA</div>
     <div className="promo-hint">Edita plantillas y respuestas rápidas para enseñarle a SYNA cómo habla y vende tu empresa.</div>
