@@ -2037,7 +2037,8 @@ const QUICK_BASE=['Hola hermosa, con gusto te ayudo.','¿Para qué día y horari
 function AdaptacionIA(){
   const load=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||'null')||def; }catch(e){ return def; } };
   const [tab,setTab]=useState('plantillas');
-  const [tpl,setTpl]=useState(()=>load('syna_adapt_templates',ADAPT_TPL.map(([titulo,cliente,guia])=>({titulo,cliente,guia,respuesta:''}))));
+  const [tpl,setTpl]=useState(()=>load('syna_adapt_templates',[]));
+  const [tplOpen,setTplOpen]=useState(null);
   const [quick,setQuick]=useState(()=>load('syna_quick_replies',QUICK_BASE));
   const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:'',depilacion:'',pestanas:'',facial:''}}));
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
@@ -2054,6 +2055,8 @@ function AdaptacionIA(){
   const addMsgTpl=(ti,role)=>setT(ti,{mensajes:[...mensajesTpl(tpl[ti]),{role,text:'',image:''}]});
   const delMsgTpl=(ti,mi)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).filter((_,j)=>j!==mi)});
   const imgMsgTpl=(ti,mi)=>{ const m=mensajesTpl(tpl[ti])[mi]||{}; return m.image?<div><img src={m.image} style={{width:'100%',borderRadius:10,marginTop:8}}/><button className="chip" onClick={()=>setMsgTpl(ti,mi,{image:''})}>Quitar imagen</button></div>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>setMsgTpl(ti,mi,{image:String(rd.result||'')}); rd.readAsDataURL(f); }}/>; };
+  const nuevaTpl=()=>{ const next=[...tpl,{titulo:'Nueva situación',guia:'',mensajes:[{role:'clienta',text:'',image:''},{role:'syna',text:'',image:''}]}]; saveTpl(next); setTplOpen(next.length-1); };
+  const delTpl=i=>{ const next=tpl.filter((_,j)=>j!==i); saveTpl(next); setTplOpen(null); };
   const setQ=(i,v)=>saveQuick(quick.map((x,j)=>j===i?v:x));
   const addQ=()=>saveQuick([...quick,'']);
   const delQ=i=>saveQuick(quick.filter((_,j)=>j!==i));
@@ -2070,18 +2073,29 @@ function AdaptacionIA(){
     </div>
     {tab==='plantillas'&&<>
       <label>Reglas de tono</label><textarea className="inp" style={{minHeight:90,resize:'vertical'}} value={tono} onChange={e=>saveTono(e.target.value)} />
+      <button className="btn" onClick={nuevaTpl}>+ Nueva plantilla</button>
+      {tpl.length===0&&<div className="empty" style={{padding:'18px 0'}}>Toca “Nueva plantilla” para crear tu primera simulación de chat.</div>}
       {tpl.map((t,i)=><div className="pcard" key={i}>
-        <div className="pcard-h"><span>{i+1}. {t.titulo}</span></div>
-        <div className="promo-hint">Simulación de venta por WhatsApp. Edita lo que dice la clienta, lo que responde SYNA y sube imagen cuando aplique.</div>
-        {mensajesTpl(t).map((m,mi)=><div key={mi} className="cli-visita" style={{background:m.role==='syna'?'#EEFBEF':'var(--surface)'}}>
-          <div className="cli-v-top"><select className="sel" style={{maxWidth:170}} value={m.role} onChange={e=>setMsgTpl(i,mi,{role:e.target.value})}><option value="clienta">Clienta</option><option value="syna">SYNA / empresa</option></select><button className="chip" onClick={()=>delMsgTpl(i,mi)}>Quitar</button></div>
-          <textarea className="inp" style={{minHeight:80,resize:'vertical'}} placeholder={m.role==='clienta'?'Mensaje de la clienta':'Respuesta ideal de SYNA'} value={m.text||''} onChange={e=>setMsgTpl(i,mi,{text:e.target.value})}/>
-          <label className="nf-l">Imagen en este momento <span className="nf-opt">(opcional)</span></label>{imgMsgTpl(i,mi)}
-        </div>)}
-        <div className="chips" style={{marginBottom:10}}><button className="chip" onClick={()=>addMsgTpl(i,'clienta')}>+ Mensaje clienta</button><button className="chip" onClick={()=>addMsgTpl(i,'syna')}>+ Respuesta SYNA</button></div>
-        <label className="nf-l">Regla/guía</label><textarea className="inp" style={{minHeight:65,resize:'vertical'}} value={t.guia} onChange={e=>setT(i,{guia:e.target.value})}/>
+        <button className="addx" style={{width:'100%',textAlign:'left'}} onClick={()=>setTplOpen(tplOpen===i?null:i)}>{tplOpen===i?'▾':'▸'} {t.titulo||('Plantilla '+(i+1))}</button>
+        {tplOpen===i&&<>
+          <label className="nf-l">Nombre de la situación</label><input className="inp" value={t.titulo||''} onChange={e=>setT(i,{titulo:e.target.value})} placeholder="Ej. Agendar cejas sábado" />
+          <div className="promo-hint">Simulación tipo WhatsApp. Toca/escribe cada mensaje y sube imagen en el momento correcto.</div>
+          <div style={{background:'#efe7db',borderRadius:18,padding:12,margin:'10px 0'}}>
+            {mensajesTpl(t).map((m,mi)=><div key={mi} style={{display:'flex',justifyContent:m.role==='syna'?'flex-end':'flex-start',marginBottom:8}}>
+              <div style={{maxWidth:'86%',background:m.role==='syna'?'#d9fdd3':'#fff',borderRadius:12,padding:8,boxShadow:'0 1px 2px rgba(0,0,0,.08)'}}>
+                <select className="sel" value={m.role} onChange={e=>setMsgTpl(i,mi,{role:e.target.value})}><option value="clienta">Clienta</option><option value="syna">SYNA / empresa</option></select>
+                <textarea className="inp" style={{minHeight:70,resize:'vertical',marginTop:6}} placeholder={m.role==='clienta'?'Mensaje de la clienta':'Respuesta ideal de SYNA'} value={m.text||''} onChange={e=>setMsgTpl(i,mi,{text:e.target.value})}/>
+                {imgMsgTpl(i,mi)}
+                <button className="chip" style={{marginTop:6}} onClick={()=>delMsgTpl(i,mi)}>Quitar mensaje</button>
+              </div>
+            </div>)}
+          </div>
+          <div className="chips" style={{marginBottom:10}}><button className="chip" onClick={()=>addMsgTpl(i,'clienta')}>+ Mensaje clienta</button><button className="chip" onClick={()=>addMsgTpl(i,'syna')}>+ Respuesta SYNA</button></div>
+          <label className="nf-l">Regla/guía de esta simulación</label><textarea className="inp" style={{minHeight:65,resize:'vertical'}} value={t.guia||''} onChange={e=>setT(i,{guia:e.target.value})}/>
+          <button className="btn" onClick={guardarTodo}>Guardar plantilla / chats</button>
+          <button className="btn-prev" onClick={()=>delTpl(i)}>Eliminar plantilla</button>
+        </>}
       </div>)}
-      <button className="btn" onClick={guardarTodo}>Guardar plantillas</button>
     </>}
     {tab==='rapidas'&&<>
       {quick.map((q,i)=><div className="srow" key={i}><input className="inp" value={q} onChange={e=>setQ(i,e.target.value)} placeholder="Respuesta rápida"/><button className="srow-x" onClick={()=>delQ(i)}>×</button></div>)}
