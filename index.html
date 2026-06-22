@@ -2044,26 +2044,30 @@ function AdaptacionIA(){
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
   const [guardado,setGuardado]=useState('');
   const patrones=load('syna_patrones_chat',[]);
-  const saveTpl=(next)=>{ setTpl(next); localStorage.setItem('syna_adapt_templates',JSON.stringify(next)); };
-  const saveQuick=(next)=>{ setQuick(next); localStorage.setItem('syna_quick_replies',JSON.stringify(next)); };
-  const saveRec=(next)=>{ setRec(next); localStorage.setItem('syna_adapt_recursos',JSON.stringify(next)); };
-  const saveTono=(v)=>{ setTono(v); localStorage.setItem('syna_adapt_tono',v); };
-  const guardarTodo=()=>{ localStorage.setItem('syna_adapt_templates',JSON.stringify(tpl)); localStorage.setItem('syna_quick_replies',JSON.stringify(quick.filter(q=>String(q||'').trim()))); localStorage.setItem('syna_adapt_recursos',JSON.stringify(rec)); localStorage.setItem('syna_adapt_tono',tono); setGuardado('Guardado en Adaptación IA'); setTimeout(()=>setGuardado(''),1600); };
+  const aviso=(msg)=>{ setGuardado(msg); setTimeout(()=>setGuardado(''),2600); };
+  const storeJson=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ aviso('No se pudo guardar: una imagen es muy pesada. Prueba con una imagen más liviana.'); return false; } };
+  const storeText=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ aviso('No se pudo guardar en este navegador.'); return false; } };
+  const imgFile=(file,cb)=>{ const rd=new FileReader(); rd.onload=()=>{ const src=String(rd.result||''); const im=new Image(); im.onload=()=>{ const max=900, sc=Math.min(1,max/Math.max(im.width,im.height)); const cv=document.createElement('canvas'); cv.width=Math.max(1,Math.round(im.width*sc)); cv.height=Math.max(1,Math.round(im.height*sc)); const cx=cv.getContext('2d'); cx.drawImage(im,0,0,cv.width,cv.height); cb(cv.toDataURL('image/jpeg',.72)); }; im.onerror=()=>cb(src); im.src=src; }; rd.readAsDataURL(file); };
+  const saveTpl=(next)=>{ if(storeJson('syna_adapt_templates',next)) setTpl(next); };
+  const saveQuick=(next)=>{ if(storeJson('syna_quick_replies',next)) setQuick(next); };
+  const saveRec=(next)=>{ if(storeJson('syna_adapt_recursos',next)) setRec(next); };
+  const saveTono=(v)=>{ if(storeText('syna_adapt_tono',v)) setTono(v); };
+  const guardarTodo=()=>{ const ok=storeJson('syna_adapt_templates',tpl)&&storeJson('syna_quick_replies',quick.filter(q=>String(q||'').trim()))&&storeJson('syna_adapt_recursos',rec)&&storeText('syna_adapt_tono',tono); if(ok) aviso('Guardado en Adaptación IA'); };
   const setT=(i,patch)=>saveTpl(tpl.map((x,j)=>j===i?{...x,...patch}:x));
   const mensajesTpl=t=> (t.mensajes&&t.mensajes.length?t.mensajes:[{role:'clienta',text:t.cliente||'',image:''},{role:'syna',text:t.respuesta||'',image:''}]);
   const setMsgTpl=(ti,mi,patch)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).map((m,j)=>j===mi?{...m,...patch}:m)});
   const addMsgTpl=(ti,role)=>setT(ti,{mensajes:[...mensajesTpl(tpl[ti]),{role,text:'',image:''}]});
   const delMsgTpl=(ti,mi)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).filter((_,j)=>j!==mi)});
-  const imgMsgTpl=(ti,mi)=>{ const m=mensajesTpl(tpl[ti])[mi]||{}; return m.image?<div><img src={m.image} style={{width:'100%',borderRadius:10,marginTop:8}}/><button className="chip" onClick={()=>setMsgTpl(ti,mi,{image:''})}>Quitar imagen</button></div>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>setMsgTpl(ti,mi,{image:String(rd.result||'')}); rd.readAsDataURL(f); }}/>; };
+  const imgMsgTpl=(ti,mi)=>{ const m=mensajesTpl(tpl[ti])[mi]||{}; return m.image?<div><img src={m.image} style={{width:'100%',borderRadius:10,marginTop:8}}/><button className="chip" onClick={()=>setMsgTpl(ti,mi,{image:''})}>Quitar imagen</button></div>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; imgFile(f,src=>setMsgTpl(ti,mi,{image:src})); }}/>; };
   const nuevaTpl=()=>{ const next=[...tpl,{titulo:'Nueva situación',guia:'',mensajes:[{role:'clienta',text:'',image:''},{role:'syna',text:'',image:''}]}]; saveTpl(next); setTplOpen(next.length-1); };
   const delTpl=i=>{ const next=tpl.filter((_,j)=>j!==i); saveTpl(next); setTplOpen(null); };
   const setQ=(i,v)=>saveQuick(quick.map((x,j)=>j===i?v:x));
   const addQ=()=>saveQuick([...quick,'']);
   const delQ=i=>saveQuick(quick.filter((_,j)=>j!==i));
-  const img=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec[key]?<button className="chip" onClick={()=>saveRec({...rec,[key]:''})}>Quitar</button>:null}</div>{rec[key]?<img src={rec[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>saveRec({...rec,[key]:String(rd.result||'')}); rd.readAsDataURL(f); }}/>}</div>;
+  const img=(key,label)=> <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span>{rec[key]?<button className="chip" onClick={()=>saveRec({...rec,[key]:''})}>Quitar</button>:null}</div>{rec[key]?<img src={rec[key]} style={{width:'100%',borderRadius:12,marginTop:8}}/>:<input type="file" accept="image/*" className="inp" onChange={e=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; imgFile(f,src=>saveRec({...rec,[key]:src})); }}/>}</div>;
   const areaList=key=>{ const v=(rec.areas||{})[key]; return Array.isArray(v)?v:(v?[{src:v,desc:''}]:[]); };
   const saveAreaList=(key,list)=>saveRec({...rec,areas:{...(rec.areas||{}),[key]:list}});
-  const addAreaFiles=(key,files)=>{ const arr=Array.from(files||[]); if(!arr.length)return; const current=areaList(key); let pending=arr.length, added=[]; arr.forEach(f=>{ const rd=new FileReader(); rd.onload=()=>{ added.push({src:String(rd.result||''),desc:''}); pending--; if(pending===0) saveAreaList(key,[...current,...added]); }; rd.readAsDataURL(f); }); };
+  const addAreaFiles=(key,files)=>{ const arr=Array.from(files||[]); if(!arr.length)return; const current=areaList(key); let pending=arr.length, added=[]; arr.forEach(f=>{ imgFile(f,src=>{ added.push({src,desc:''}); pending--; if(pending===0) saveAreaList(key,[...current,...added]); }); }); };
   const imgArea=(key,label)=>{ const list=areaList(key); return <div className="cli-visita"><div className="cli-v-top"><span className="cli-v-srv">{label}</span><span className="cli-v-tot">{list.length} img</span></div><input type="file" accept="image/*" multiple className="inp" onChange={e=>addAreaFiles(key,e.target.files)} />{list.map((it,i)=><div key={i} className="cli-visita"><img src={it.src} style={{width:'100%',borderRadius:12,marginTop:8}}/><label className="nf-l">Descripción / servicios de esta imagen</label><textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={it.desc||''} onChange={e=>saveAreaList(key,list.map((x,j)=>j===i?{...x,desc:e.target.value}:x))} placeholder="Ej. Limpieza profunda, hidratación, peeling, beneficios..."/><button className="chip" onClick={()=>saveAreaList(key,list.filter((_,j)=>j!==i))}>Quitar imagen</button></div>)}</div>; };
   return <div className="fade">
     <div className="sec-title">Adaptación IA</div>
