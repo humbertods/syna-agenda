@@ -1444,10 +1444,10 @@ function CitaSheet({cita,onClose,onReagendar,onEliminar,onActualizar}){
         <span className={"sheet-badge "+(conf?'ok':'pend')}>{conf?'Confirmada':'Por confirmar'}</span>
 
         {!conf
-          ? <button className="sheet-btn primary" disabled={busy} onClick={()=>act({estado:'confirmada'})}>✓ Confirmar cita</button>
+          ? <button className="sheet-btn primary" disabled={busy} onClick={()=>act({estado:'confirmada'})}>✓ Confirmar asistencia</button>
           : <button className="sheet-btn" disabled={busy} onClick={()=>act({estado:'pendiente'})}>Marcar por confirmar</button>}
 
-        {!enProceso && <button className="sheet-btn" disabled={busy} onClick={adelantar}>Adelantar cita · llegó ahora</button>}
+        {!enProceso && <button className="sheet-btn" disabled={busy} onClick={adelantar}>Enviar a NexServ ahora · llegó</button>}
 
         <div className="sheet-abono">
           <input className="inp" type="number" inputMode="decimal" placeholder="Abono $" value={abono} onChange={e=>setAbono(e.target.value)} />
