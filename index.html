@@ -648,14 +648,17 @@ const {useState,useEffect,useMemo} = React;
 const API = window.SYNA_API;
 
 /* ---------- API helpers ---------- */
+function synaSession(){ try{return localStorage.getItem('syna_session')||'';}catch(e){return '';} }
 async function apiGet(action, params={}){
-  const qs = new URLSearchParams({action, ...params}).toString();
+  const session=synaSession();
+  const qs = new URLSearchParams({action, ...(session?{session}:{}), ...params}).toString();
   const r = await fetch(`${API}?${qs}`);
   const txt = await r.text();
   try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
 }
 async function apiPost(action, params={}){
-  const r = await fetch(API, {method:'POST', body: JSON.stringify({action, ...params})});
+  const session=synaSession();
+  const r = await fetch(API, {method:'POST', body: JSON.stringify({action, ...(session?{session}:{}), ...params})});
   const txt = await r.text();
   try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
 }
@@ -679,7 +682,7 @@ function App(){
   const storeGet=(k,d='')=>{ try{ return localStorage.getItem(k)||d; }catch(e){ return d; } };
   const storeSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
   const storeRemove=(keys)=>{ try{ keys.forEach(k=>localStorage.removeItem(k)); }catch(e){} };
-  const [authed,setAuthed]=useState(()=>storeGet('syna_auth')==='1');
+  const [authed,setAuthed]=useState(()=>storeGet('syna_auth')==='1' && !!storeGet('syna_session'));
   const [rol,setRol]=useState(()=>storeGet('syna_rol'));
   const [nombre,setNombre]=useState(()=>storeGet('syna_nombre'));
   // ── Modo embebido: NexServ abre SYNA en un iframe con ?embed=1&view=... ──
@@ -713,10 +716,11 @@ function App(){
     storeSet('syna_auth','1');
     storeSet('syna_rol', (r&&r.rol)||'');
     storeSet('syna_nombre', (r&&r.nombre)||'');
+    storeSet('syna_session', (r&&r.session)||'');
     setRol((r&&r.rol)||''); setNombre((r&&r.nombre)||''); setTab('principal'); setAuthed(true);
   };
   const salir = () => {
-    storeRemove(['syna_auth','syna_rol','syna_nombre']);
+    storeRemove(['syna_auth','syna_rol','syna_nombre','syna_session']);
     setAuthed(false);
   };
   const onRefresh = () => { setRefreshing(true); setRefreshKey(k=>k+1); setTimeout(()=>setRefreshing(false),700); };
@@ -1767,7 +1771,7 @@ function Asistente(){
     const nuevos=[...msgs,{role:'user',text:t}];
     setMsgs(nuevos); setInput(''); setCargando(true);
     try{
-      const adaptacion=(()=>{ try{ const rawTpl=JSON.parse(localStorage.getItem('syna_adapt_templates')||'[]'); return {
+      const adaptacion=await (async()=>{ try{ const srv=await apiGet('getAdaptacionIA'); if(srv&&srv.ok&&srv.adaptacion&&!srv.vacio) return srv.adaptacion; }catch(_){ } try{ const rawTpl=JSON.parse(localStorage.getItem('syna_adapt_templates')||'[]'); return {
         tono:localStorage.getItem('syna_adapt_tono')||'',
         plantillas:rawTpl.map(t=>{ const ms=(t.mensajes||[]).filter(m=>String(m.text||'').trim()||m.image); return ms.length?{titulo:t.titulo,guia:t.guia,cliente:ms.filter(m=>m.role==='clienta').map(m=>m.text).join('\n'),respuesta:ms.filter(m=>m.role==='syna').map(m=>(m.text||'')+(m.image?' [enviar imagen]':'')).join('\n'),mensajes:ms.map(m=>({role:m.role,text:m.text||'',tieneImagen:!!m.image}))}:{...t}; }).filter(x=>x&&(x.respuesta||x.mensajes)).slice(0,10),
         rapidas:JSON.parse(localStorage.getItem('syna_quick_replies')||'[]').filter(Boolean).slice(0,30),
@@ -1783,8 +1787,10 @@ function Asistente(){
   const patrones=()=>{ try{return JSON.parse(localStorage.getItem('syna_patrones_chat')||'[]')||[];}catch(e){return [];} };
   const guardarPatron=(idx,original,corregida)=>{ try{
     const entrada=msgs.slice(Math.max(0,idx-3),idx).map(m=>({role:m.role,text:m.text}));
-    const arr=patrones(); arr.push({fecha:new Date().toISOString(),entrada,original,corregida});
+    const patron={fecha:new Date().toISOString(),entrada,original,corregida};
+    const arr=patrones(); arr.push(patron);
     localStorage.setItem('syna_patrones_chat',JSON.stringify(arr.slice(-100)));
+    try{ apiPost('addPatronAdaptacionIA',{patron}); }catch(_){ }
   }catch(e){} };
   const abrirEditar=(idx,txt)=>{ setEditIdx(idx); setEditTxt(txt); };
   const cancelarEditar=()=>{ setEditIdx(null); setEditTxt(''); };
@@ -2036,14 +2042,15 @@ const ADAPT_TPL=[
 const QUICK_BASE=['Hola hermosa, con gusto te ayudo.','¿Para qué día y horario te gustaría agendar?','Tenemos disponibilidad en estos horarios:','Para reservar se confirma con abono.','Te paso la ubicación:','Tu cita queda confirmada para','Si deseas podemos reagendar sin problema.','Ese servicio dura aproximadamente','Te recomiendo esta opción porque','¿Te confirmo ese horario?'];
 function AdaptacionIA(){
   const load=(k,def)=>{ try{ return JSON.parse(localStorage.getItem(k)||'null')||def; }catch(e){ return def; } };
+  const recDefault={cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:[],depilacion:[],pestanas:[],facial:[]}};
   const [tab,setTab]=useState('plantillas');
   const [tpl,setTpl]=useState(()=>load('syna_adapt_templates',[]));
   const [tplOpen,setTplOpen]=useState(null);
   const [quick,setQuick]=useState(()=>load('syna_quick_replies',QUICK_BASE));
-  const [rec,setRec]=useState(()=>load('syna_adapt_recursos',{cita:'',abono:'',cuentas:'',gps:'',emojis:'✨ 💜 ✅ 📅 💬',areas:{cejas:[],depilacion:[],pestanas:[],facial:[]}}));
+  const [rec,setRec]=useState(()=>load('syna_adapt_recursos',recDefault));
   const [tono,setTono]=useState(()=>localStorage.getItem('syna_adapt_tono')||'Tono cálido, claro, profesional, con cierre hacia agenda. Máximo 2 o 3 opciones de horario.');
   const [guardado,setGuardado]=useState('');
-  const patrones=load('syna_patrones_chat',[]);
+  const [patrones,setPatrones]=useState(()=>load('syna_patrones_chat',[]));
   const aviso=(msg)=>{ setGuardado(msg); setTimeout(()=>setGuardado(''),2600); };
   const storeJson=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ aviso('No se pudo guardar: una imagen es muy pesada. Prueba con una imagen más liviana.'); return false; } };
   const storeText=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ aviso('No se pudo guardar en este navegador.'); return false; } };
@@ -2052,7 +2059,8 @@ function AdaptacionIA(){
   const saveQuick=(next)=>{ if(storeJson('syna_quick_replies',next)) setQuick(next); };
   const saveRec=(next)=>{ if(storeJson('syna_adapt_recursos',next)) setRec(next); };
   const saveTono=(v)=>{ if(storeText('syna_adapt_tono',v)) setTono(v); };
-  const guardarTodo=()=>{ const ok=storeJson('syna_adapt_templates',tpl)&&storeJson('syna_quick_replies',quick.filter(q=>String(q||'').trim()))&&storeJson('syna_adapt_recursos',rec)&&storeText('syna_adapt_tono',tono); if(ok) aviso('Guardado en Adaptación IA'); };
+  useEffect(()=>{ (async()=>{ try{ const r=await apiGet('getAdaptacionIA'); if(!(r&&r.ok&&r.adaptacion)) return; if(r.vacio){ aviso('Adaptación IA local lista para subir: toca Guardar'); return; } const a=r.adaptacion; if(Array.isArray(a.plantillas)){ setTpl(a.plantillas); storeJson('syna_adapt_templates',a.plantillas); } if(Array.isArray(a.rapidas)){ setQuick(a.rapidas.length?a.rapidas:QUICK_BASE); storeJson('syna_quick_replies',a.rapidas.length?a.rapidas:QUICK_BASE); } if(a.recursos){ setRec(a.recursos); storeJson('syna_adapt_recursos',a.recursos); } if(a.tono){ setTono(a.tono); storeText('syna_adapt_tono',a.tono); } if(Array.isArray(a.patrones)){ setPatrones(a.patrones); storeJson('syna_patrones_chat',a.patrones); } aviso('Adaptación IA cargada desde la app'); }catch(e){ aviso('Usando cache local de este dispositivo'); } })(); },[]);
+  const guardarTodo=async()=>{ const data={tono,plantillas:tpl,rapidas:quick.filter(q=>String(q||'').trim()),recursos:rec,patrones}; const ok=storeJson('syna_adapt_templates',data.plantillas)&&storeJson('syna_quick_replies',data.rapidas)&&storeJson('syna_adapt_recursos',data.recursos)&&storeText('syna_adapt_tono',data.tono)&&storeJson('syna_patrones_chat',data.patrones); if(!ok)return; try{ const r=await apiPost('saveAdaptacionIA',{adaptacion:data}); aviso(r&&r.ok?'Guardado en la app para todos los dispositivos':'Guardado local, pero no en servidor'); }catch(e){ aviso('Guardado local, sin conexión al servidor'); } };
   const setT=(i,patch)=>saveTpl(tpl.map((x,j)=>j===i?{...x,...patch}:x));
   const mensajesTpl=t=> (t.mensajes&&t.mensajes.length?t.mensajes:[{role:'clienta',text:t.cliente||'',image:''},{role:'syna',text:t.respuesta||'',image:''}]);
   const setMsgTpl=(ti,mi,patch)=>setT(ti,{mensajes:mensajesTpl(tpl[ti]).map((m,j)=>j===mi?{...m,...patch}:m)});
