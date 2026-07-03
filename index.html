@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" href="logo_icon_solo.png" />
 <link rel="apple-touch-icon" href="logo_icon_solo.png" />
 
+<!-- NEXCERT:SECTION:CONFIG -->
 <!-- ============================================================= -->
 <!--  CONFIG: si cambias el deploy del Apps Script, pega aquí       -->
 <!--  la nueva URL que termina en /exec                            -->
@@ -15,11 +16,13 @@
 <script>
   window.SYNA_API = "https://script.google.com/macros/s/AKfycbxShQ8OsbaXajcaqI-D3_QWWszIkTvoi6b-R3UXqvjmirDCkfvY6rtm60ivXfDsnc8q/exec";
 </script>
+<!-- /NEXCERT:SECTION:CONFIG -->
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
+<!-- NEXCERT:SECTION:STYLES -->
 <style>
   :root{
     --bg:#f5f5f3; --panel:#f5f5f3; --surface:#FFFFFF; --ink:#1C1C1E; --soft:#8E8E93;
@@ -635,6 +638,7 @@
   .addp:active{background:rgba(91,59,196,.06)}
   .cap-note{font-size:12px;color:var(--soft);text-align:center;padding:8px;background:var(--panel);border-radius:10px;margin-bottom:6px}
 </style>
+<!-- /NEXCERT:SECTION:STYLES -->
 </head>
 <body>
 <div id="root"></div>
@@ -648,20 +652,48 @@ const {useState,useEffect,useMemo} = React;
 const API = window.SYNA_API;
 
 /* ---------- API helpers ---------- */
+/* NEXCERT:SECTION:AUTH_API */
 function synaSession(){ try{return localStorage.getItem('syna_session')||'';}catch(e){return '';} }
+function synaAuthExpired(){
+  try{ ['syna_auth','syna_rol','syna_nombre','syna_session'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ location.reload(); }catch(e){}
+}
+function synaParseApi(txt){
+  let data;
+  try{ data=JSON.parse(txt); }catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
+  if(data&&data.auth===false) synaAuthExpired();
+  return data;
+}
 async function apiGet(action, params={}){
   const session=synaSession();
+  if(window.google&&google.script&&google.script.run){
+    return new Promise((resolve,reject)=>{
+      google.script.run
+        .withSuccessHandler(data=>{ if(data&&data.auth===false) synaAuthExpired(); resolve(data); })
+        .withFailureHandler(err=>reject(new Error(err&&err.message?err.message:String(err))))
+        .synaApi({action, ...(session?{session}:{}), ...params});
+    });
+  }
   const qs = new URLSearchParams({action, ...(session?{session}:{}), ...params}).toString();
   const r = await fetch(`${API}?${qs}`);
   const txt = await r.text();
-  try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
+  return synaParseApi(txt);
 }
 async function apiPost(action, params={}){
   const session=synaSession();
+  if(window.google&&google.script&&google.script.run){
+    return new Promise((resolve,reject)=>{
+      google.script.run
+        .withSuccessHandler(data=>{ if(data&&data.auth===false) synaAuthExpired(); resolve(data); })
+        .withFailureHandler(err=>reject(new Error(err&&err.message?err.message:String(err))))
+        .synaApi({action, ...(session?{session}:{}), ...params});
+    });
+  }
   const r = await fetch(API, {method:'POST', body: JSON.stringify({action, ...(session?{session}:{}), ...params})});
   const txt = await r.text();
-  try{return JSON.parse(txt);}catch(e){throw new Error('Respuesta no JSON: '+txt.slice(0,120));}
+  return synaParseApi(txt);
 }
+/* /NEXCERT:SECTION:AUTH_API */
 
 /* ---------- utilidades ---------- */
 const hoy = () => { const d=new Date(); const z=n=>(n<10?'0':'')+n; return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
@@ -678,6 +710,7 @@ const ESTADOS={confirmada:['#EAF3DE','#3B6D11'],pendiente:['#FAEEDA','#854F0B'],
   completada:['#E6F1FB','#0C447C'],cancelada:['#F1EFE8','#5F5E5A'],no_show:['#FCEBEB','#A32D2D']};
 
 /* ---------- App ---------- */
+/* NEXCERT:SECTION:APP */
 function App(){
   const storeGet=(k,d='')=>{ try{ return localStorage.getItem(k)||d; }catch(e){ return d; } };
   const storeSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
@@ -688,7 +721,7 @@ function App(){
   // ── Modo embebido: NexServ abre SYNA en un iframe con ?embed=1&view=... ──
   const _params = (()=>{ try{ return new URLSearchParams(location.search); }catch(e){ return new URLSearchParams(''); } })();
   const EMBED = _params.get('embed')==='1' || _params.get('embed')==='true';
-  const _viewMap = { reservar:'reservar', agenda:'calendario', calendario:'calendario', asistente:'asistente', copiloto:'asistente', principal:'principal' };
+  const _viewMap = { reservar:'reservar', nueva:'reservar', agenda:'calendario', calendario:'calendario', asistente:'asistente', copiloto:'asistente', principal:'principal' };
   const _initialTab = _viewMap[String(_params.get('view')||'').toLowerCase()] || 'principal';
   const [tab,setTab]=useState(_initialTab);
   const [areas,setAreas]=useState([]);
@@ -719,7 +752,8 @@ function App(){
     storeSet('syna_session', (r&&r.session)||'');
     setRol((r&&r.rol)||''); setNombre((r&&r.nombre)||''); setTab('principal'); setAuthed(true);
   };
-  const salir = () => {
+  const salir = async () => {
+    try{ await apiPost('logout'); }catch(e){}
     storeRemove(['syna_auth','syna_rol','syna_nombre','syna_session']);
     setAuthed(false);
   };
@@ -775,6 +809,7 @@ function App(){
     </div>
   );
 }
+/* /NEXCERT:SECTION:APP */
 
 /* ---------- Flujo de reservar (multi-persona) ---------- */
 /* ---------- Previsualización: ver agenda real + espacios disponibles ---------- */
@@ -1305,6 +1340,9 @@ function Clientas({go}){
   const [q,setQ]=useState('');
   const [sel,setSel]=useState(null);      // clienta seleccionada (objeto)
   const [hist,setHist]=useState(null);    // getHistorial result
+  const [com,setCom]=useState(null);      // forma de comunicarse guardada en SYNA
+  const [guardandoCom,setGuardandoCom]=useState(false);
+  const [msgCom,setMsgCom]=useState('');
   const [cargandoH,setCargandoH]=useState(false);
 
   useEffect(()=>{ (async()=>{
@@ -1313,11 +1351,22 @@ function Clientas({go}){
   })(); },[]);
 
   const abrir=async(c)=>{
-    setSel(c); setHist(null); setCargandoH(true);
-    try{ const r=await apiGet('getHistorial',{codigo:c.codigo}); setHist(r.ok?r:{visitas:[],fichas:{facial:[],pestanas:[]}}); }
-    catch(e){ setHist({visitas:[],fichas:{facial:[],pestanas:[]}}); }
+    setSel(c); setHist(null); setCom(null); setMsgCom(''); setCargandoH(true);
+    try{
+      const [r,rc]=await Promise.all([apiGet('getHistorial',{codigo:c.codigo}),apiGet('getComunicacionClienta',{codigo:c.codigo})]);
+      setHist(r.ok?r:{visitas:[],fichas:{facial:[],pestanas:[]}});
+      setCom((rc&&rc.ok&&rc.comunicacion)?{...rc.comunicacion,codigo:c.codigo,nombre:c.nombre}:{codigo:c.codigo,nombre:c.nombre,forma:'',preferencias:'',frases:'',evitar:''});
+    }
+    catch(e){ setHist({visitas:[],fichas:{facial:[],pestanas:[]}}); setCom({codigo:c.codigo,nombre:c.nombre,forma:'',preferencias:'',frases:'',evitar:''}); }
     setCargandoH(false);
   };
+  const setComField=(k,v)=>setCom(c=>({...c,[k]:v,codigo:sel&&sel.codigo,nombre:sel&&sel.nombre}));
+  const guardarCom=async()=>{ if(!sel||!com)return; setGuardandoCom(true); setMsgCom('');
+    try{ const r=await apiPost('saveComunicacionClienta',{comunicacion:{...com,codigo:sel.codigo,nombre:sel.nombre}}); setMsgCom(r&&r.ok?'Forma de comunicarse guardada':'No se pudo guardar'); }
+    catch(e){ setMsgCom('Error de conexión al guardar'); }
+    setGuardandoCom(false); setTimeout(()=>setMsgCom(''),2200);
+  };
+  const copiarContexto=()=>{ if(!sel)return; const ult=(hist&&hist.visitas?hist.visitas:[]).slice(0,3).map(v=>`${v.fecha||''} · ${v.servicio||''}${v.staff?' · '+v.staff:''}`).join('\n'); const txt=[`Clienta: ${sel.nombre} (${sel.codigo})`,com&&com.forma?`Forma de comunicarse: ${com.forma}`:'',com&&com.preferencias?`Preferencias: ${com.preferencias}`:'',com&&com.frases?`Frases típicas: ${com.frases}`:'',ult?`Últimos servicios NexServ:\n${ult}`:''].filter(Boolean).join('\n'); try{ navigator.clipboard.writeText(txt); setMsgCom('Contexto copiado para Copiloto'); setTimeout(()=>setMsgCom(''),1600); }catch(e){ setMsgCom('No se pudo copiar'); } };
 
   const norm=s=>String(s||'').toLowerCase();
   const money=n=>'$'+Math.round(n||0);
@@ -1328,14 +1377,14 @@ function Clientas({go}){
 
   // ----- Ficha de una clienta -----
   if (sel){
-    const obs=[['General',sel.observaciones],['Cejas',sel.obs_cejas],['Depilación',sel.obs_depilacion],['Pestañas',sel.obs_pestanas],['Facial',sel.obs_facial]].filter(x=>s(x[1]));
+    const obs=[['General',sel.observaciones],['Cejas',sel.obs_cejas],['Depilación',sel.obs_depilacion],['Pestañas',sel.obs_pestanas],['Facial',sel.obs_facial]].filter(x=>String(x[1]||'').trim());
     const v=hist&&hist.visitas?hist.visitas:[];
     const fFac=hist&&hist.fichas?(hist.fichas.facial||[]):[];
     const fPes=hist&&hist.fichas?(hist.fichas.pestanas||[]):[];
     const fCej=hist&&hist.fichas?(hist.fichas.cejas||[]):[];
     return (
       <div className="fade">
-        <button className="back" onClick={()=>{setSel(null);setHist(null);}}>‹ Volver a clientas</button>
+        <button className="back" onClick={()=>{setSel(null);setHist(null);setCom(null);}}>‹ Volver a clientas</button>
         <div className="cli-ficha-h">
           <div className="cli-ficha-nom">{sel.nombre}{sel.top&&<span className="cli-top">⭐ TOP</span>}</div>
           <div className="cli-ficha-meta">{sel.codigo}{sel.telefono?(' · '+sel.telefono):''}</div>
@@ -1350,6 +1399,23 @@ function Clientas({go}){
           <div className="cli-box-t">Observaciones</div>
           {obs.map(([k,val])=><div key={k} className="cli-obs"><b>{k}:</b> {val}</div>)}
         </div>}
+
+        <div className="cli-box">
+          <div className="cli-box-t">Forma de comunicarse</div>
+          <div className="promo-hint">Esto se guarda en SYNA por código de clienta. El historial de servicios sigue viniendo de NexServ.</div>
+          {!com?<div className="spinner"></div>:<>
+            <label className="nf-l">Tono/trato con esta clienta</label>
+            <textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={com.forma||''} onChange={e=>setComField('forma',e.target.value)} placeholder="Ej. Le gusta trato directo y cariñoso; responderle corto, sin demasiadas opciones." />
+            <label className="nf-l">Preferencias conocidas</label>
+            <textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={com.preferencias||''} onChange={e=>setComField('preferencias',e.target.value)} placeholder="Ej. Prefiere sábados temprano, siempre pregunta por Rosa, suele reservar cejas + bozo." />
+            <label className="nf-l">Frases o pedidos típicos</label>
+            <textarea className="inp" style={{minHeight:70,resize:'vertical'}} value={com.frases||''} onChange={e=>setComField('frases',e.target.value)} placeholder="Ej. Cuando dice “lo mismo de siempre” se refiere al último combo registrado en NexServ." />
+            <label className="nf-l">Evitar / cuidado al responder</label>
+            <textarea className="inp" style={{minHeight:60,resize:'vertical'}} value={com.evitar||''} onChange={e=>setComField('evitar',e.target.value)} placeholder="Ej. No ofrecer horarios de tarde; no insistir con promos." />
+            <div className="chips" style={{marginTop:8}}><button className="chip" onClick={guardarCom} disabled={guardandoCom}>{guardandoCom?'Guardando...':'Guardar comunicación'}</button><button className="chip" onClick={copiarContexto}>Copiar contexto</button></div>
+            {msgCom?<div className="ok-msg" style={{marginTop:8}}>{msgCom}</div>:null}
+          </>}
+        </div>
 
         <div className="cli-sec">Historial de visitas</div>
         {cargandoH ? <div className="spinner"></div> :
@@ -2168,6 +2234,7 @@ function Fidelidad(){
 }
 
 /* ---------- Login (acceso a la app) ---------- */
+/* NEXCERT:SECTION:LOGIN */
 function Login({onLogin}){
   const [u,setU]=useState('');
   const [pw,setPw]=useState('');
@@ -2213,8 +2280,11 @@ function Login({onLogin}){
     </div>
   );
 }
+/* /NEXCERT:SECTION:LOGIN */
 
+/* NEXCERT:SECTION:RENDER */
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+/* /NEXCERT:SECTION:RENDER */
 </script>
 </body>
 </html>
