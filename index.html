@@ -637,7 +637,7 @@
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;margin-bottom:8px}
   .addp:active{background:rgba(91,59,196,.06)}
   .cap-note{font-size:12px;color:var(--soft);text-align:center;padding:8px;background:var(--panel);border-radius:10px;margin-bottom:6px}
-  .camp-wrap{padding-bottom:92px}.camp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.camp-brand{font-size:25px;font-weight:900;letter-spacing:-.04em}.camp-brand small{display:block;font-size:11px;font-weight:700;color:var(--soft);letter-spacing:0;margin-top:3px}.camp-sub{font-size:13px;line-height:1.45;color:var(--soft)}.camp-ico-btn{width:38px;height:38px;border:0;background:#fff;border-radius:50%;box-shadow:var(--shadow);color:var(--ink);font-size:18px}
+  .camp-wrap{padding-bottom:92px}.camp-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.camp-brand{font-size:25px;font-weight:900;letter-spacing:-.04em}.camp-brand small{display:block;font-size:11px;font-weight:700;color:var(--soft);letter-spacing:0;margin-top:3px}.camp-sub{font-size:13px;line-height:1.45;color:var(--soft)}
   .camp-primary{width:100%;border:0;border-radius:12px;background:linear-gradient(135deg,#5B3BC4,#3A2280);color:#fff;padding:16px;font-size:15px;font-weight:900;font-family:inherit;box-shadow:0 10px 22px rgba(91,59,196,.22)}
   .camp-summary{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin:18px 0;box-shadow:var(--shadow)}.camp-row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:13px 0;font-size:13px}.camp-row:last-child{border-bottom:0}.camp-row b{font-size:15px;color:var(--brand-deep)}
   .camp-tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px}.camp-tab{border:0;background:#fff;color:var(--soft);border-radius:16px;padding:8px 13px;font-size:11px;font-weight:800;white-space:nowrap}.camp-tab.on{background:var(--brand-soft);color:var(--brand)}
@@ -2230,7 +2230,7 @@ function CampaignStudio({go}){
   ];
   const nav=(id,label,ic,cls='')=><button className={(view===id?'on ':'')+cls} onClick={()=>{setView(id); if(id==='crear')setStep(1);}}><span>{ic}</span>{label}</button>;
   const volver=()=>{ if(typeof go==='function') go('principal'); };
-  const header=(title,sub)=><div className="camp-top"><button className="camp-back-top" onClick={volver}>‹</button><div className="camp-brand" style={{flex:1,marginLeft:10}}>{title}<small>{sub}</small></div><button className="camp-ico-btn">⌕</button></div>;
+  const header=(title,sub)=><div className="camp-top"><button className="camp-back-top" onClick={volver}>‹</button><div className="camp-brand" style={{flex:1,marginLeft:10}}>{title}<small>{sub}</small></div></div>;
   const campaignCard=(c,detail)=> <div className="camp-card" key={c[1]} onClick={()=>setView('detalle')}>
     <div className="camp-card-top"><div className="camp-thumb">{c[0]}</div><div><h3>{c[1]}<br/>{c[2]}</h3><p>{c[5]}</p><span className={'camp-status '+c[4]}>● {c[3]}</span></div><div style={{marginLeft:'auto',color:'var(--soft)'}}>⌄</div></div>
     {detail&&<div className="camp-process">
