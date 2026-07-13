@@ -637,6 +637,21 @@
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;margin-bottom:8px}
   .addp:active{background:rgba(91,59,196,.06)}
   .cap-note{font-size:12px;color:var(--soft);text-align:center;padding:8px;background:var(--panel);border-radius:10px;margin-bottom:6px}
+  .camp-hero{background:linear-gradient(145deg,#17141f,#0e0d14);color:#fff;border-radius:24px;padding:20px 18px;margin-bottom:16px;box-shadow:0 14px 34px rgba(25,16,55,.24)}
+  .camp-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#ff4f9d;font-weight:900;margin-bottom:8px}
+  .camp-title{font-size:28px;font-weight:900;letter-spacing:-.04em;line-height:1.02;margin-bottom:7px}
+  .camp-sub{font-size:13px;line-height:1.45;color:rgba(255,255,255,.68);max-width:320px}
+  .camp-primary{width:100%;border:0;border-radius:14px;background:linear-gradient(135deg,#ff3f92,#f0529f);color:#fff;padding:15px;font-size:15px;font-weight:900;font-family:inherit;margin-top:18px;box-shadow:0 10px 22px rgba(240,82,159,.28)}
+  .camp-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .camp-stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 7px;text-align:center;box-shadow:var(--shadow)}
+  .camp-stat b{display:block;font-size:22px;color:var(--brand-deep);line-height:1}.camp-stat span{display:block;font-size:10.5px;color:var(--soft);margin-top:4px}
+  .camp-section{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#ff3f92;margin:18px 2px 10px}
+  .camp-flow{background:linear-gradient(145deg,#17141f,#101019);border-radius:20px;padding:14px;margin-bottom:16px;overflow:hidden}
+  .camp-flow-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:2px}.camp-flow-step{min-width:92px;color:#fff;text-align:center;position:relative}.camp-flow-ic{width:48px;height:48px;margin:0 auto 7px;border-radius:14px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid rgba(255,255,255,.12)}.camp-flow-step span{font-size:10.5px;font-weight:800;line-height:1.2;display:block;color:rgba(255,255,255,.86)}
+  .camp-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:11px;box-shadow:0 3px 12px rgba(0,0,0,.04)}
+  .camp-card-top{display:flex;align-items:center;gap:12px}.camp-thumb{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#ffd3e5,#f3e8ff);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}.camp-card h3{font-size:14px;margin:0 0 3px;font-weight:900;color:var(--ink)}.camp-card p{font-size:11.5px;margin:0;color:var(--soft);line-height:1.35}.camp-status{font-size:10.5px;font-weight:900;margin-top:6px;display:inline-flex;align-items:center;gap:4px}.camp-status.pink{color:#ff3f92}.camp-status.blue{color:#4A90D9}.camp-status.green{color:#32A852}
+  .camp-process{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.camp-line{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;color:var(--ink)}.camp-dot{width:13px;height:13px;border-radius:50%;border:1.5px solid #d5d2dc;flex:none}.camp-dot.ok{background:#42c66b;border-color:#42c66b}.camp-dot.now{border-color:#ff3f92;box-shadow:0 0 0 3px rgba(255,63,146,.12)}
+  .camp-dept-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.camp-dept{background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;min-height:92px}.camp-dept b{font-size:12px;color:var(--brand-deep);display:block;margin-bottom:5px}.camp-dept span{font-size:11px;color:var(--soft);line-height:1.35;display:block}
 </style>
 <!-- /NEXCERT:SECTION:STYLES -->
 </head>
@@ -2209,40 +2224,52 @@ function AdaptacionIA(){
 
 /* ---------- SYNA Campaign Studio ---------- */
 function CampaignStudio(){
-  const flujo=['Brief','Inteligencia','Estrategia','Psicología','Creatividad','Marca','Arte','Copy','Biblioteca','Producción','Performance'];
+  const flujo=[['👤','Solicitud'],['📄','Brief'],['✺','Claude analiza'],['ᕼ','Higgsfield produce'],['🖼','Activos en SYNA'],['✅','Aprobación'],['📊','Resultados'],['🧠','Aprendizaje']];
   const deps=[
-    ['Coordinación de Campañas','Convierte la solicitud en un brief oficial. No crea campañas ni decide estrategia.'],
-    ['Inteligencia Comercial','Analiza ventas, ocupación, servicios, productos y oportunidad comercial real.'],
-    ['Estrategia Comercial','Define oferta, beneficios, valor percibido, precios y diferenciadores.'],
-    ['Psicología del Consumidor','Mapea deseos, objeciones, emociones, motivaciones y gatillos mentales.'],
-    ['Dirección Creativa','Transforma la estrategia en concepto maestro, narrativa y campaña.'],
-    ['Identidad de Marca','Protege el ADN de Rosa Aguilera: voz, color, tipografía y sistema visual.'],
-    ['Dirección de Arte','Define estética, iluminación, composición, fotografía y plantilla editorial.'],
-    ['Producción de Contenido','Genera copy especializado para productos y servicios.'],
-    ['Biblioteca Inteligente','Aporta conocimiento experto institucional, productos y servicios.'],
-    ['Producción Ejecutiva','Ensambla el Master Campaign Package para Claude y Higgsfield.'],
-    ['Performance Intelligence','Aprende de alcance, reservas, ventas, ROI, audiencias y creatividad.']
+    ['Inteligencia Comercial','Ventas, ocupación y oportunidad real.'],
+    ['Estrategia Comercial','Oferta, precio, beneficios y valor percibido.'],
+    ['Psicología','Deseos, objeciones y gatillos mentales.'],
+    ['Dirección Creativa','Concepto maestro y narrativa.'],
+    ['Dirección de Arte','Estética, iluminación y composición.'],
+    ['Copywriters','Textos para productos y servicios.'],
+    ['Producción Ejecutiva','Master Campaign Package.'],
+    ['Performance IA','ROI, reservas, ventas y aprendizaje.']
   ];
   return <div className="fade">
-    <div className="sec-title">Campaign Studio</div>
-    <div className="promo-hint">Agencia de Publicidad Inteligente IA. Convierte una solicitud en estrategia comercial, producción guiada y aprendizaje de resultados reales.</div>
-    <div className="qa">
-      <button className="qa-btn">+ Nueva campaña</button>
-      <button className="qa-btn ghost">Plan semanal</button>
+    <div className="camp-hero">
+      <div className="camp-eyebrow">SYNA + Claude + Higgsfield</div>
+      <div className="camp-title">Campaign Studio</div>
+      <div className="camp-sub">Agencia de Publicidad Inteligente. SYNA recibe la campaña, Claude orquesta departamentos y Higgsfield produce activos visuales.</div>
+      <button className="camp-primary">+ Nueva Campaña</button>
     </div>
-    <div className="card" style={{padding:16,marginBottom:14}}>
-      <div className="cli-sec" style={{marginTop:0}}>Flujo de campaña</div>
-      <div className="chips" style={{gap:7}}>{flujo.map(x=><span key={x} className="chip" style={{cursor:'default'}}>{x}</span>)}</div>
+
+    <div className="camp-summary">
+      <div className="camp-stat"><b>4</b><span>Activas</span></div>
+      <div className="camp-stat"><b>2</b><span>Producción</span></div>
+      <div className="camp-stat"><b>3</b><span>Programadas</span></div>
+      <div className="camp-stat"><b>12</b><span>Publicadas</span></div>
     </div>
-    <div className="cli-sec">Departamentos IA</div>
-    {deps.map(([titulo,desc],i)=><div className="cli-visita" key={titulo}>
-      <div className="cli-v-top"><span className="cli-v-srv">{String(i+1).padStart(2,'0')} · {titulo}</span></div>
-      <div className="ficha-sub">{desc}</div>
-    </div>)}
-    <div className="card stub" style={{marginTop:14}}>
-      <div className="stub-ic">📣</div>
-      <p>Claude coordinará la agencia IA. Higgsfield será solo el motor de producción audiovisual.</p>
-      <p className="muted">Estado actual: arquitectura guardada. Próximo paso: definir datos de campañas, prompts y aprobación.</p>
+
+    <div className="camp-section">Flujo completo</div>
+    <div className="camp-flow">
+      <div className="camp-flow-row">{flujo.map(([ic,txt])=><div className="camp-flow-step" key={txt}><div className="camp-flow-ic">{ic}</div><span>{txt}</span></div>)}</div>
+    </div>
+
+    <div className="camp-section">Campañas</div>
+    <div className="camp-card">
+      <div className="camp-card-top"><div className="camp-thumb">🦵</div><div><h3>Depilación Piernas Suaves sin Límites</h3><p>12 Jun 2026 · Captar nuevas clientas</p><span className="camp-status pink">● En producción</span></div></div>
+      <div className="camp-process">
+        {['Brief recibido','Inteligencia Comercial','Estrategia Comercial','Psicología del Consumidor','Dirección Creativa'].map(x=><div className="camp-line" key={x}><i className="camp-dot ok"></i>{x}</div>)}
+        <div className="camp-line"><i className="camp-dot now"></i>Dirección de Arte</div>
+        {['Producción de Contenido','Generación en Higgsfield','Revisión y Aprobación'].map(x=><div className="camp-line" key={x}><i className="camp-dot"></i>{x}</div>)}
+      </div>
+    </div>
+    <div className="camp-card"><div className="camp-card-top"><div className="camp-thumb">✨</div><div><h3>Limpieza Facial Piel Renovada</h3><p>15 Jun 2026 · Promocionar servicio</p><span className="camp-status blue">● Programada</span></div></div></div>
+    <div className="camp-card"><div className="camp-card-top"><div className="camp-thumb">👁</div><div><h3>Shading Cejas Define tu mirada</h3><p>08 Jun 2026 · Autoridad y confianza</p><span className="camp-status green">● Activa</span></div></div></div>
+
+    <div className="camp-section">Departamentos IA</div>
+    <div className="camp-dept-grid">
+      {deps.map(([titulo,desc])=><div className="camp-dept" key={titulo}><b>{titulo}</b><span>{desc}</span></div>)}
     </div>
   </div>;
 }
